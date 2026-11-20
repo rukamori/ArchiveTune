@@ -11,15 +11,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: am-blend
+          # Do NOT use submodules: recursive here, we handle it manually below
       
       - name: Initialize Submodules Safely
         run: |
-          git submodule sync --recursive
-          git -c protocol.version=2 submodule update --init --recursive --force || {
-            echo "Warning: Some submodules failed. Fetching latest defaults..."
-            git submodule foreach 'git fetch origin && git checkout $(git remote show origin | grep HEAD | cut -d" " -f5) || true'
-            git submodule update --init --recursive || true
-          }
+          # 1. Temporarily disable "stop on error" so missing commits don't crash the build
+          set +e
+          
+          echo "Syncing submodules..."
+          git submodule sync --recursive || true
+          
+          echo "Attempting standard update (will ignore missing commit errors)..."
+          git submodule update --init --recursive || true
+          
+          echo "Forcing submodules to latest available commits..."
+          git submodule foreach 'git fetch origin || true'
+          git submodule foreach 'git reset --hard origin/main || git reset --hard origin/master || true'
+          
+          # 2. Re-enable "stop on error" for the actual build steps
+          set -e
           
       - name: Sync with Main Rukamori Repo
         run: |
@@ -37,13 +47,7 @@ jobs:
           
       - name: Build All APKs (Debug, GMS Release, FOSS Release)
         env:
-          # This passes your saved GitHub Secret into the build process
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
-          
-          # If you have other signing secrets, add them here like this:
-          # KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          # KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          # KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assemble
         
       - name: Save All APKs
