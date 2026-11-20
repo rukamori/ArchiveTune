@@ -26,23 +26,23 @@ jobs:
 
       - name: Restore Permanent Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > release.keystore
-          # Verify the keystore isn't empty (prevents silent failures)
-          ls -lh release.keystore
+          # Create the exact folder structure the app's build.gradle expects
+          mkdir -p app/keystore
+          # Decode your secret into the keystore file
+          echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > app/keystore/release.keystore
+          # Verify it's not empty (should be around 2KB)
+          ls -lh app/keystore/release.keystore
 
-      - name: Build GMS Release APK
+      - name: Build & Sign GMS Release APK
         env:
           API_BEARER_TOKEN: ${{ secrets.API_BEARER_TOKEN }}
+          # These env vars tell Gradle to use the keystore we just created
+          KEYSTORE_PASSWORD: mysecretpassword
+          KEY_ALIAS: archive-tune
+          KEY_PASSWORD: mysecretpassword
           GRADLE_OPTS: "-Xmx4g"
+        # Gradle will automatically sign the APK during this step!
         run: ./gradlew assembleGmsMobileUniversalRelease --no-daemon --parallel
-
-      - name: Download uber-apk-signer
-        run: wget -q https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar
-
-      - name: Sign the APK with Permanent Key
-        run: |
-          # Single line command with explicit JKS type to prevent password prompt errors
-          java -jar uber-apk-signer-1.3.0.jar --apks $(find app/build/outputs/apk -name "*.apk" | head -n 1) --ks release.keystore --ksAlias archive-tune --ksPass mysecretpassword --keyPass mysecretpassword --ksType JKS
 
       - name: Save Signed Release APK
         uses: actions/upload-artifact@v4
