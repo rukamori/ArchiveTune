@@ -1,0 +1,15 @@
+name: Generate Permanent Keystore
+on: workflow_dispatch
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate and Print Keystore
+        run: |
+          keytool -genkey -v -keystore my-release-key.keystore -alias archive-tune -keyalg RSA -keysize 2048 -validity 10000 -storepass mysecretpassword -keypass mysecretpassword -dname "CN=Ichigo, OU=Dev, O=Ichigo, L=City, S=State, C=US" -noprompt
+          echo ""
+          echo "=== COPY THE STRING BELOW THIS LINE ==="
+          base64 -w0 my-release-key.keystore
+          echo ""
+          echo "=== END OF STRING ==="
