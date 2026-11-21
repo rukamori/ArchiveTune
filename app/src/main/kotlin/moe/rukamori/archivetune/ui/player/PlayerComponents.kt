@@ -1828,7 +1828,7 @@ fun PlayerPlaybackControls(
             }
         }
 
-        PlayerDesignStyle.V7, PlayerDesignStyle.V8, PlayerDesignStyle.V9, PlayerDesignStyle.V10, PlayerDesignStyle.V11 -> {
+        PlayerDesignStyle.V7, PlayerDesignStyle.V8, PlayerDesignStyle.V9, PlayerDesignStyle.V10, PlayerDesignStyle.V11, PlayerDesignStyle.FLAMINGO -> {
             Unit
         }
     }
