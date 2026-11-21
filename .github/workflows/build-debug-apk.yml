@@ -1,0 +1,49 @@
+name: Build debug APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [ 'ipv4-fallback' ]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.15'
+      - run: python scripts/generate_translation_contributors.py
+      - uses: actions/setup-java@v6
+        with:
+          java-version: 27
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-cleanup: on-success
+      - run: chmod +x gradlew
+      - name: Generate debug.keystore
+        run: |
+          mkdir -p ~/.android
+          [ -f ~/.android/debug.keystore ] || keytool -genkey -v \
+            -keystore ~/.android/debug.keystore -storepass android \
+            -alias androiddebugkey -keypass android -keyalg RSA \
+            -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+      - name: Unit tests for the IPv6 fallback
+        continue-on-error: true
+        run: ./gradlew --console=plain :app:testGmsMobileUniversalDebugUnitTest --tests '*Ipv6FallbackTest'
+        env:
+          PULL_REQUEST: 'true'
+      - name: Build debug APK
+        run: ./gradlew --console=plain assembleGmsMobileUniversalDebug
+        env:
+          PULL_REQUEST: 'true'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archivetune-debug-apk
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
