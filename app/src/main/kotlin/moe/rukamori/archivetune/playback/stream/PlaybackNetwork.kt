@@ -23,12 +23,15 @@ import java.net.Proxy
 internal fun playbackNetworkConfiguration(context: Context): YoutubeiNetworkConfiguration {
     val manager = requireNotNull(context.getSystemService(ConnectivityManager::class.java))
     val network = manager.activeNetwork
+    val preferIpv4 = Ipv6Fallback.isActive(network?.networkHandle)
     return YoutubeiNetworkConfiguration(
         proxy = YouTube.streamProxy,
         proxyUsername = YouTube.proxyUsername,
         proxyPassword = YouTube.proxyPassword,
-        dns = YouTube.dns,
-        networkIdentity = "${network?.networkHandle}:${network?.let(manager::getLinkProperties)}",
+        dns = if (preferIpv4) Ipv6Fallback.ipv4First(YouTube.dns) else YouTube.dns,
+        networkIdentity =
+            "${network?.networkHandle}:${network?.let(manager::getLinkProperties)}" +
+                if (preferIpv4) ":ipv4" else "",
     )
 }
 
@@ -64,6 +67,16 @@ internal class PlaybackHttpClient(
                 .connectionPool(connectionPool())
                 .proxy(current.proxy ?: Proxy.NO_PROXY)
                 .dns(dns)
+                .addInterceptor(
+                    Ipv6ConnectFallbackInterceptor(
+                        activeNetworkHandle = {
+                            context.getSystemService(ConnectivityManager::class.java)
+                                ?.activeNetwork
+                                ?.networkHandle
+                        },
+                        proxyInUse = current.proxy != null,
+                    ),
+                )
                 .proxyAuthenticator { _, response ->
                     if (current.proxy == null || username.isNullOrBlank() || password.isNullOrBlank() ||
                         response.request.header("Proxy-Authorization") != null
@@ -83,4 +96,4 @@ internal class PlaybackHttpClient(
     }
 }
 
-private fun String.isGoogleVideoHost(): Boolean = this == "googlevideo.com" || endsWith(".googlevideo.com")
+internal fun String.isGoogleVideoHost(): Boolean = this == "googlevideo.com" || endsWith(".googlevideo.com")
