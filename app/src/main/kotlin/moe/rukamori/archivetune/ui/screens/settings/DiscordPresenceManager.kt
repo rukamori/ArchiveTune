@@ -51,6 +51,9 @@ object DiscordPresenceManager {
 
     private var consecutiveFailures = 0
 
+    private val runningState = MutableStateFlow(false)
+    val isRunningFlow = runningState.asStateFlow()
+
     private val lastRpcStartTimeState = MutableStateFlow<Long?>(null)
     val lastRpcStartTimeFlow = lastRpcStartTimeState.asStateFlow()
     val lastRpcStartTime: Long? get() = lastRpcStartTimeState.value
@@ -226,6 +229,7 @@ object DiscordPresenceManager {
         token: String,
     ) {
         if (!started.getAndSet(true)) {
+            runningState.value = true
             consecutiveFailures = 0
             scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             lifecycleObserver =
@@ -293,6 +297,7 @@ object DiscordPresenceManager {
 
     fun stop(clearActivity: Boolean = true) {
         if (!started.getAndSet(false)) return
+        runningState.value = false
 
         DiscordSocialPresenceClient.setOnTransportInvalidated(null)
         updateGeneration.incrementAndGet()

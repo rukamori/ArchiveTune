@@ -1127,6 +1127,20 @@
     <string name="playback_state_ready">READY</string>
     <string name="playback_state_ended">ENDED</string>
     <string name="playback_state_unknown">UNKNOWN</string>
+    <string name="experimental_enabled_count">%1$d of %2$d experiments enabled</string>
+    <string name="experimental_lab_caption">Unfinished tools for diagnosing playback and integrations. They may change or disappear in a future release.</string>
+    <string name="live_diagnostics">Live diagnostics</string>
+    <string name="experiment_state_on">On</string>
+    <string name="experiment_state_off">Off</string>
+    <string name="discord_presence_window">Presence window</string>
+    <string name="discord_debug_no_timestamps">No presence timestamps. Discord gets none while playback is paused or the track has no duration.</string>
+    <string name="nerd_stats_buffer_ahead">%1$s ahead</string>
+    <string name="nerd_stats_position">%1$s / %2$s</string>
+    <string name="nerd_stats_multiplier_value">%1$s×</string>
+    <string name="nerd_stats_loudness_value">%1$s dB</string>
+    <string name="nerd_stats_itag_label" translatable="false">itag</string>
+    <string name="copy_media_id">Copy media ID</string>
+    <string name="media_id_copied">Media ID copied</string>
     <string name="share_logs">Share logs</string>
     <string name="about">About</string>
     <string name="new_version_available">New version available</string>
