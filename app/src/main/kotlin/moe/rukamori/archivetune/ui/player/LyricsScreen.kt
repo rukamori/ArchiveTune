@@ -136,8 +136,9 @@ import moe.rukamori.archivetune.constants.BlurRadiusKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.LyricsBackgroundStyle
-import moe.rukamori.archivetune.constants.LyricsAutoHideControlsKey
 import moe.rukamori.archivetune.constants.LyricsBackgroundStyleKey
+import moe.rukamori.archivetune.constants.LyricsControlsVisibility
+import moe.rukamori.archivetune.constants.LyricsControlsVisibilityKey
 import moe.rukamori.archivetune.constants.LyricsMode
 import moe.rukamori.archivetune.constants.LyricsModeKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
@@ -273,19 +274,19 @@ fun LyricsScreen(
         } else {
             Color.White
         }
-    val autoHideControlsState =
-        rememberPreference(LyricsAutoHideControlsKey, false)
-    val autoHideControls by autoHideControlsState
-    val onAutoHideControlsChange =
-        remember(autoHideControlsState) {
-            { enabled: Boolean ->
-                autoHideControlsState.value = enabled
+    val controlsVisibilityState =
+        rememberEnumPreference(LyricsControlsVisibilityKey, LyricsControlsVisibility.SHOW)
+    val controlsVisibility by controlsVisibilityState
+    val onControlsVisibilityChange =
+        remember(controlsVisibilityState) {
+            { visibility: LyricsControlsVisibility ->
+                controlsVisibilityState.value = visibility
             }
         }
     val composeAccessibilityManager = LocalAccessibilityManager.current
     val platformAccessibilityManager =
         remember(context) { context.getSystemService(AccessibilityManager::class.java) }
-    var controlsVisible by remember { mutableStateOf(true) }
+    var autoControlsVisible by remember { mutableStateOf(true) }
     var controlsInteraction by remember { mutableIntStateOf(0) }
 
     val hapticClick =
@@ -347,9 +348,9 @@ fun LyricsScreen(
     var gradientColors by remember(mediaMetadata.thumbnailUrl) { mutableStateOf(AppleMusicFallbackGradient) }
     val isScrubbing = sliderPosition != null
 
-    LaunchedEffect(autoHideControls, isPlaying, isScrubbing, controlsInteraction) {
-        controlsVisible = true
-        if (!autoHideControls || !isPlaying || isScrubbing) return@LaunchedEffect
+    LaunchedEffect(controlsVisibility, isPlaying, isScrubbing, controlsInteraction) {
+        autoControlsVisible = true
+        if (controlsVisibility != LyricsControlsVisibility.AUTO || !isPlaying || isScrubbing) return@LaunchedEffect
         if (platformAccessibilityManager?.isTouchExplorationEnabled == true) return@LaunchedEffect
         val hideDelayMillis =
             composeAccessibilityManager?.calculateRecommendedTimeoutMillis(
@@ -359,8 +360,14 @@ fun LyricsScreen(
                 containsControls = true,
             ) ?: LYRICS_CONTROLS_AUTO_HIDE_DELAY_MS
         delay(hideDelayMillis)
-        controlsVisible = false
+        autoControlsVisible = false
     }
+    val controlsVisible =
+        when (controlsVisibility) {
+            LyricsControlsVisibility.HIDE -> false
+            LyricsControlsVisibility.AUTO -> autoControlsVisible
+            LyricsControlsVisibility.SHOW -> true
+        }
 
     val lyricsDurationMs = durationState.longValue.takeIf { it != C.TIME_UNSET } ?: 0L
     LaunchedEffect(mediaMetadata.id, lyricsDurationMs) {
@@ -450,8 +457,8 @@ fun LyricsScreen(
                 mediaMetadataProvider = { mediaMetadata },
                 lyricsSyncOffset = lyricsSyncOffset,
                 onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
-                autoHideControlsState = autoHideControlsState,
-                onAutoHideControlsChange = onAutoHideControlsChange,
+                controlsVisibilityState = controlsVisibilityState,
+                onControlsVisibilityChange = onControlsVisibilityChange,
                 onDismiss = menuState::dismiss,
                 lyricsRenderViewModel = lyricsRenderViewModel,
             )

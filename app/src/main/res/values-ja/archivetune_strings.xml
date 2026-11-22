@@ -343,8 +343,13 @@
     <string name="lyrics_share_background_blur">背景ぼかし</string>
     <string name="lyrics_share_background_blur_value">%1$d ピクセル</string>
     <string name="lyrics_line_blur">歌詞のラインをぼかす</string>
-    <string name="lyrics_auto_hide_controls">自動非表示コントロール</string>
-    <string name="lyrics_auto_hide_controls_desc">5 秒後に再生コントロールを非表示にします。画面をタップすると、再度表示されます。</string>
+    <string name="lyrics_player_controls">再生コントロール</string>
+    <string name="lyrics_player_controls_hide">非表示</string>
+    <string name="lyrics_player_controls_auto">自動</string>
+    <string name="lyrics_player_controls_show">表示</string>
+    <string name="lyrics_player_controls_hide_desc">歌詞の表示中は再生コントロールを常に非表示にします。</string>
+    <string name="lyrics_player_controls_auto_desc">5 秒後に再生コントロールを非表示にします。画面をタップすると、再度表示されます。</string>
+    <string name="lyrics_player_controls_show_desc">歌詞の表示中は再生コントロールを常に表示します。</string>
     <string name="lyrics_searching_lyrics_providers">歌詞プロバイダーを検索中…</string>
     <string name="lyrics_source_label">Source: %1$s</string>
     <string name="lyrics_source_embedded">ファイルに埋め込まれています</string>

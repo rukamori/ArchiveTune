@@ -11,9 +11,7 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +27,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import moe.rukamori.archivetune.constants.MusicRecognitionFloatingEnabledKey
+import moe.rukamori.archivetune.constants.MusicRecognitionHistoryJsonKey
 import moe.rukamori.archivetune.shazamkit.Shazam
 import moe.rukamori.archivetune.shazamkit.ShazamSignatureGenerator
 import moe.rukamori.archivetune.shazamkit.models.RecognitionResult
@@ -60,20 +60,20 @@ class MusicRecognitionRepository
         fun observeFloatingRecognitionEnabled(): Flow<Boolean> =
             context.dataStore.data
                 .map { preferences ->
-                    preferences[FloatingRecognitionEnabledKey] ?: FloatingRecognitionEnabledDefault
+                    preferences[MusicRecognitionFloatingEnabledKey] ?: FloatingRecognitionEnabledDefault
                 }.distinctUntilChanged()
                 .flowOn(Dispatchers.IO)
 
         suspend fun isFloatingRecognitionEnabled(): Boolean =
             withContext(Dispatchers.IO) {
-                context.dataStore.data.first()[FloatingRecognitionEnabledKey]
+                context.dataStore.data.first()[MusicRecognitionFloatingEnabledKey]
                     ?: FloatingRecognitionEnabledDefault
             }
 
         suspend fun setFloatingRecognitionEnabled(enabled: Boolean) {
             withContext(Dispatchers.IO) {
                 context.dataStore.edit { preferences ->
-                    preferences[FloatingRecognitionEnabledKey] = enabled
+                    preferences[MusicRecognitionFloatingEnabledKey] = enabled
                 }
             }
         }
@@ -204,10 +204,6 @@ private const val SilenceDecibels = -54.0
 private const val LoudDecibels = -12.0
 private const val MusicRecognitionHistoryLimit = 50
 private const val FloatingRecognitionEnabledDefault = false
-
-private val MusicRecognitionHistoryJsonKey = stringPreferencesKey("musicRecognitionHistoryJson")
-private val FloatingRecognitionEnabledKey =
-    booleanPreferencesKey("musicRecognitionFloatingEnabled")
 
 private val HistoryJson =
     Json {

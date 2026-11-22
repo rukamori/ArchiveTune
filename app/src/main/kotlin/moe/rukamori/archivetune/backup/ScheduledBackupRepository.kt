@@ -12,16 +12,19 @@ import android.content.Intent
 import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import moe.rukamori.archivetune.constants.ScheduledBackupCustomDateEpochDayKey
+import moe.rukamori.archivetune.constants.ScheduledBackupDirectoryNameKey
+import moe.rukamori.archivetune.constants.ScheduledBackupDirectoryUriKey
+import moe.rukamori.archivetune.constants.ScheduledBackupEnabledKey
+import moe.rukamori.archivetune.constants.ScheduledBackupFrequencyKey
+import moe.rukamori.archivetune.constants.ScheduledBackupOverwriteExistingKey
 import moe.rukamori.archivetune.utils.dataStore
 import java.time.LocalDate
 import javax.inject.Inject
@@ -127,12 +130,12 @@ class ScheduledBackupRepository
             }
 
         companion object {
-            private val ENABLED_KEY = booleanPreferencesKey("scheduledBackupEnabled")
-            private val FREQUENCY_KEY = stringPreferencesKey("scheduledBackupFrequency")
-            private val CUSTOM_DATE_KEY = longPreferencesKey("scheduledBackupCustomDateEpochDay")
-            private val DIRECTORY_URI_KEY = stringPreferencesKey("scheduledBackupDirectoryUri")
-            private val DIRECTORY_NAME_KEY = stringPreferencesKey("scheduledBackupDirectoryName")
-            private val OVERWRITE_KEY = booleanPreferencesKey("scheduledBackupOverwriteExisting")
+            private val ENABLED_KEY = ScheduledBackupEnabledKey
+            private val FREQUENCY_KEY = ScheduledBackupFrequencyKey
+            private val CUSTOM_DATE_KEY = ScheduledBackupCustomDateEpochDayKey
+            private val DIRECTORY_URI_KEY = ScheduledBackupDirectoryUriKey
+            private val DIRECTORY_NAME_KEY = ScheduledBackupDirectoryNameKey
+            private val OVERWRITE_KEY = ScheduledBackupOverwriteExistingKey
 
             val NON_PORTABLE_PREFERENCE_KEYS: Set<String> =
                 setOf(

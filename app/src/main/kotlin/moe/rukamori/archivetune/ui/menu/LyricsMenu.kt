@@ -12,6 +12,16 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Configuration
 import android.widget.Toast
+import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,11 +42,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -53,6 +66,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
@@ -69,7 +83,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -84,6 +101,7 @@ import moe.rukamori.archivetune.constants.AiCustomEndpointKey
 import moe.rukamori.archivetune.constants.AiProvider
 import moe.rukamori.archivetune.constants.AiProviderKey
 import moe.rukamori.archivetune.constants.DefaultLyricsSyncOffsetMode
+import moe.rukamori.archivetune.constants.LyricsControlsVisibility
 import moe.rukamori.archivetune.constants.LyricsSyncOffsetMode
 import moe.rukamori.archivetune.constants.LyricsSyncOffsetModeKey
 import moe.rukamori.archivetune.constants.TranslatorTargetLangKey
@@ -121,14 +139,14 @@ fun LyricsMenu(
     mediaMetadataProvider: () -> MediaMetadata,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
-    autoHideControlsState: State<Boolean>,
-    onAutoHideControlsChange: (Boolean) -> Unit,
+    controlsVisibilityState: State<LyricsControlsVisibility>,
+    onControlsVisibilityChange: (LyricsControlsVisibility) -> Unit,
     onDismiss: () -> Unit,
     lyricsRenderViewModel: LyricsRenderViewModel,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val autoHideControls by autoHideControlsState
+    val controlsVisibility by controlsVisibilityState
     val renderState by lyricsRenderViewModel.state.collectAsStateWithLifecycle()
     val preparedLyrics = (renderState as? LyricsRenderScreenState.Success)?.lyrics
     val hasTranslations = preparedLyrics?.hasTranslations == true
@@ -757,28 +775,141 @@ fun LyricsMenu(
                     enabled = hasTranslations,
                     modifier = translationSwitchModifier,
                 )
-                NewMenuItem(
-                    headlineContent = {
-                        Text(stringResource(R.string.lyrics_auto_hide_controls))
+                LyricsControlsVisibilityItem(
+                    selected = controlsVisibility,
+                    onSelected = onControlsVisibilityChange,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@get:StringRes
+private val LyricsControlsVisibility.labelResId: Int
+    get() =
+        when (this) {
+            LyricsControlsVisibility.HIDE -> R.string.lyrics_player_controls_hide
+            LyricsControlsVisibility.AUTO -> R.string.lyrics_player_controls_auto
+            LyricsControlsVisibility.SHOW -> R.string.lyrics_player_controls_show
+        }
+
+@get:StringRes
+private val LyricsControlsVisibility.descriptionResId: Int
+    get() =
+        when (this) {
+            LyricsControlsVisibility.HIDE -> R.string.lyrics_player_controls_hide_desc
+            LyricsControlsVisibility.AUTO -> R.string.lyrics_player_controls_auto_desc
+            LyricsControlsVisibility.SHOW -> R.string.lyrics_player_controls_show_desc
+        }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LyricsControlsVisibilityItem(
+    selected: LyricsControlsVisibility,
+    onSelected: (LyricsControlsVisibility) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val motion = MaterialTheme.motionScheme
+    val options = LyricsControlsVisibility.entries
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        NewMenuItem(
+            headlineContent = { Text(stringResource(R.string.lyrics_player_controls)) },
+            supportingContent = {
+                AnimatedContent(
+                    targetState = selected,
+                    transitionSpec = {
+                        fadeIn(motion.defaultEffectsSpec()) togetherWith
+                            fadeOut(motion.fastEffectsSpec()) using
+                            SizeTransform(clip = false) { _, _ -> motion.defaultSpatialSpec() }
                     },
-                    supportingContent = {
-                        Text(stringResource(R.string.lyrics_auto_hide_controls_desc))
+                    label = "lyricsControlsVisibilityDescription",
+                ) { visibility ->
+                    Text(stringResource(visibility.descriptionResId))
+                }
+            },
+        )
+        ButtonGroup(
+            overflowIndicator = { menuState ->
+                ButtonGroupDefaults.OverflowIndicator(menuState = menuState)
+            },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
+                    .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        ) {
+            options.forEachIndexed { index, option ->
+                customItem(
+                    buttonGroupContent = {
+                        val checked = option == selected
+                        val interactionSource = remember { MutableInteractionSource() }
+                        ToggleButton(
+                            checked = checked,
+                            onCheckedChange = { if (!checked) onSelected(option) },
+                            shapes =
+                                when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                },
+                            interactionSource = interactionSource,
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .heightIn(min = ButtonDefaults.MinHeight)
+                                    .animateWidth(interactionSource)
+                                    .semantics { role = Role.RadioButton },
+                        ) {
+                            AnimatedVisibility(
+                                visible = checked,
+                                enter = fadeIn(motion.fastEffectsSpec()) + expandHorizontally(motion.fastSpatialSpec()),
+                                exit = fadeOut(motion.fastEffectsSpec()) + shrinkHorizontally(motion.fastSpatialSpec()),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.check),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(ButtonDefaults.IconSize),
+                                    )
+                                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                }
+                            }
+                            Text(
+                                text = stringResource(option.labelResId),
+                                style =
+                                    if (checked) {
+                                        MaterialTheme.typography.labelLargeEmphasized
+                                    } else {
+                                        MaterialTheme.typography.labelLarge
+                                    },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     },
-                    trailingContent = {
-                        Switch(
-                            checked = autoHideControls,
-                            onCheckedChange = onAutoHideControlsChange,
+                    menuContent = { menuState ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(option.labelResId)) },
+                            leadingIcon =
+                                if (option == selected) {
+                                    {
+                                        Icon(
+                                            painter = painterResource(R.drawable.check),
+                                            contentDescription = null,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                            onClick = {
+                                menuState.dismiss()
+                                onSelected(option)
+                            },
                         )
                     },
-                    onClick = {
-                        onAutoHideControlsChange(!autoHideControls)
-                    },
-                    modifier =
-                        Modifier.padding(
-                            start = 8.dp,
-                            end = 8.dp,
-                            bottom = 8.dp,
-                        ),
                 )
             }
         }

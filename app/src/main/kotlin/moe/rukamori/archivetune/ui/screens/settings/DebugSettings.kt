@@ -34,12 +34,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalAnimationsDisabled
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.DevShowDiscordDebugKey
+import moe.rukamori.archivetune.constants.DevShowNerdStatsKey
+import moe.rukamori.archivetune.constants.ShowCodecOnPlayerKey
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
@@ -53,19 +55,19 @@ import moe.rukamori.archivetune.utils.rememberPreference
 fun DebugSettings(navController: NavController) {
     val (showDevDebug, onShowDevDebugChange) =
         rememberPreference(
-            key = booleanPreferencesKey("dev_show_discord_debug"),
+            key = DevShowDiscordDebugKey,
             defaultValue = false,
         )
 
     val (showNerdStats, onShowNerdStatsChange) =
         rememberPreference(
-            key = booleanPreferencesKey("dev_show_nerd_stats"),
+            key = DevShowNerdStatsKey,
             defaultValue = false,
         )
 
     val (showCodecOnPlayer, onShowCodecOnPlayerChange) =
         rememberPreference(
-            key = booleanPreferencesKey("show_codec_on_player"),
+            key = ShowCodecOnPlayerKey,
             defaultValue = false,
         )
 

@@ -13,7 +13,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -279,7 +278,7 @@ class App :
                     Triple(
                         it[EnableDnsOverHttpsKey] ?: false,
                         it[DnsOverHttpsProviderKey] ?: "Cloudflare",
-                        it[stringPreferencesKey("customDnsUrl")] ?: "https://",
+                        it[CustomDnsUrlKey] ?: "https://",
                     )
                 }.distinctUntilChanged()
                 .collect { (enabled, provider, customUrl) ->

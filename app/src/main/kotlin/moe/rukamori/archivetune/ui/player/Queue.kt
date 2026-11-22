@@ -48,7 +48,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,6 +61,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.constants.ShowCodecOnPlayerKey
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -242,7 +242,7 @@ internal fun QueueFooter(
     val sleepTimerEnabled = chrome.sleepTimerEnabled
     val sleepTimerTimeLeft = chrome.sleepTimerTimeLeft
     val playerDesignStyle by rememberEnumPreference(key = PlayerDesignStyleKey, defaultValue = PlayerDesignStyle.V4)
-    val (showCodecOnPlayer) = rememberPreference(booleanPreferencesKey("show_codec_on_player"), false)
+    val (showCodecOnPlayer) = rememberPreference(ShowCodecOnPlayerKey, false)
 
     Box(
         modifier = modifier

@@ -14,14 +14,10 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.datastore.core.DataMigration
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,72 +29,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
-import moe.rukamori.archivetune.constants.GitHubReleasesEtagKey
-import moe.rukamori.archivetune.constants.GitHubReleasesFingerprintKey
-import moe.rukamori.archivetune.constants.GitHubReleasesJsonKey
-import moe.rukamori.archivetune.constants.GitHubReleasesLastCheckedAtKey
-import moe.rukamori.archivetune.constants.HISTORY_DURATION_LEGACY_FLOAT_KEY
-import moe.rukamori.archivetune.constants.HISTORY_DURATION_MAX
-import moe.rukamori.archivetune.constants.HISTORY_DURATION_MIN
-import moe.rukamori.archivetune.constants.HistoryDuration
-import moe.rukamori.archivetune.constants.LastNotifiedVersionKey
-import moe.rukamori.archivetune.constants.LastUpdateCheckKey
 import moe.rukamori.archivetune.extensions.toEnum
 import kotlin.properties.ReadOnlyProperty
 
-private val ReleaseChannelMigrationKey = booleanPreferencesKey("release_channel_migrated")
-private val RetiredUpdatePreferenceKeys: List<Preferences.Key<*>> =
-    listOf(
-        stringPreferencesKey("updateChannel"),
-        stringPreferencesKey("daily_nightly_releases_etag"),
-        stringPreferencesKey("daily_nightly_releases_json"),
-        longPreferencesKey("daily_nightly_releases_last_checked_at"),
-        stringPreferencesKey("daily_nightly_releases_fingerprint"),
-    )
-
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
     name = "settings",
-    produceMigrations = { _ ->
-        listOf(
-            object : DataMigration<Preferences> {
-                override suspend fun shouldMigrate(currentData: Preferences): Boolean =
-                    currentData[HISTORY_DURATION_LEGACY_FLOAT_KEY] != null &&
-                        currentData[HistoryDuration] == null
-
-                override suspend fun migrate(currentData: Preferences): Preferences =
-                    currentData.toMutablePreferences().apply {
-                        val oldFloat = currentData[HISTORY_DURATION_LEGACY_FLOAT_KEY]
-                        if (oldFloat != null) {
-                            this[HistoryDuration] =
-                                oldFloat
-                                    .toInt()
-                                    .coerceIn(HISTORY_DURATION_MIN, HISTORY_DURATION_MAX)
-                            this.remove(HISTORY_DURATION_LEGACY_FLOAT_KEY)
-                        }
-                    }
-
-                override suspend fun cleanUp() {}
-            },
-            object : DataMigration<Preferences> {
-                override suspend fun shouldMigrate(currentData: Preferences): Boolean =
-                    currentData[ReleaseChannelMigrationKey] != true
-
-                override suspend fun migrate(currentData: Preferences): Preferences =
-                    currentData.toMutablePreferences().apply {
-                        RetiredUpdatePreferenceKeys.forEach { remove(it) }
-                        remove(GitHubReleasesEtagKey)
-                        remove(GitHubReleasesFingerprintKey)
-                        remove(GitHubReleasesJsonKey)
-                        remove(GitHubReleasesLastCheckedAtKey)
-                        remove(LastUpdateCheckKey)
-                        remove(LastNotifiedVersionKey)
-                        this[ReleaseChannelMigrationKey] = true
-                    }
-
-                override suspend fun cleanUp() {}
-            },
-        )
-    },
+    produceMigrations = { _ -> listOf(PreferenceSchemaMigration) },
 )
 
 object PreferenceStore {
