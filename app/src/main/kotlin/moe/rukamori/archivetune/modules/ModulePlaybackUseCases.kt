@@ -274,7 +274,9 @@ class ResolveModuleAudioUseCase @Inject constructor(
         val started = System.currentTimeMillis()
         var problem = "TIMEOUT"
         val fresh = (try {
-            withTimeoutOrNull(15_000) { this.selection(selection.originalId, module, selection.trackId, selection.metadata, target, failure) }
+            withTimeoutOrNull(15_000) {
+                this@ResolveModuleAudioUseCase.selection(selection.originalId, module, selection.trackId, selection.metadata, target, failure)
+            }
         } catch (error: CancellationException) { throw error }
         catch (error: Exception) {
             problem = listOfNotNull((error as? ModuleException)?.diagnosticCode, error.javaClass.simpleName).joinToString("/")
