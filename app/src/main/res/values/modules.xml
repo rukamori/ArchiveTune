@@ -74,6 +74,7 @@
     <string name="modules_capability_album">Albums</string>
     <string name="modules_capability_artist">Artists</string>
     <string name="modules_capability_playlist">Playlists</string>
+    <string name="modules_capability_playback_errors">Playback error handling</string>
     <string name="modules_diagnostics">Connection and diagnostics</string>
     <string name="modules_diagnostics_copy">Copy diagnostics</string>
     <string name="modules_not_checked">Not checked</string>

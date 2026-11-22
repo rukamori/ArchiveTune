@@ -87,10 +87,30 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
         }
     }
 
+    suspend fun playbackError(id: String, source: String, origin: String, trackId: String, failure: ModulePlaybackFailure,
+        settings: Map<String, String>, metadata: ModuleTrack? = null, song: ModuleSong? = null): ModulePlaybackDecision {
+        val value = call(id, source, origin, "onPlaybackError",
+            JSONArray().put(failure.json(trackId)).put(context(settings, metadata, song)))
+        val decision = when (value) {
+            JSONObject.NULL -> return ModulePlaybackDecision.Default
+            is String -> JSONObject().put("action", value)
+            is JSONObject -> value
+            else -> throw ModuleException(ModuleFailure.EXECUTION, stage = ModuleLoadStage.PROVIDER, diagnosticCode = "INVALID_PLAYBACK_DECISION")
+        }
+        return when (decision.optString("action").lowercase(java.util.Locale.ROOT)) {
+            "retry" -> ModulePlaybackDecision.Retry
+            "fallback" -> ModulePlaybackDecision.Fallback
+            "fail" -> ModulePlaybackDecision.Fail(decision.opt("message") as? String)
+            "", "default" -> ModulePlaybackDecision.Default
+            else -> throw ModuleException(ModuleFailure.EXECUTION, stage = ModuleLoadStage.PROVIDER, diagnosticCode = "INVALID_PLAYBACK_DECISION")
+        }
+    }
+
     suspend fun stream(id: String, source: String, origin: String, trackId: String, settings: Map<String, String>, metadata: ModuleTrack? = null,
-        song: ModuleSong? = null): ModuleStream {
+        song: ModuleSong? = null, retry: ModulePlaybackFailure? = null): ModuleStream {
         val quality = settings["quality"]?.let(::parseJsonValue) ?: JSONObject.NULL
-        val value = call(id, source, origin, "getTrackStreamUrl", JSONArray().put(trackId).put(quality).put(context(settings, metadata, song))) as? JSONObject
+        val value = call(id, source, origin, "getTrackStreamUrl", JSONArray().put(trackId).put(quality)
+            .put(context(settings, metadata, song).apply { retry?.let { put("playbackError", it.json(trackId)) } })) as? JSONObject
             ?: throw ModuleException(ModuleFailure.EXECUTION, stage = ModuleLoadStage.PROVIDER, diagnosticCode = "INVALID_STREAM_RESULT")
         val url = ModuleHttpClient.webUrl(value.text("streamUrl").ifBlank { value.text("url") })
         val track = value.optJSONObject("track") ?: JSONObject()
@@ -238,10 +258,10 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
                     val detail = listOf(name, code, envelope.optString("frame"), problem?.code.orEmpty()).filter(String::isNotBlank).joinToString("/")
                     throw ModuleException(failure, stage = ModuleLoadStage.PROVIDER, diagnosticCode = detail)
                 }
-                if (!envelope.has("value") || envelope.isNull("value")) {
+                if ((!envelope.has("value") || envelope.isNull("value")) && function != "onPlaybackError") {
                     throw ModuleException(ModuleFailure.EXECUTION, stage = ModuleLoadStage.PROVIDER, diagnosticCode = "INVALID_RESULT")
                 }
-                val value = envelope.get("value")
+                val value = envelope.opt("value") ?: JSONObject.NULL
                 if (function == "getTrackStreamUrl" && value is JSONObject) session.host.domains?.let { domains ->
                     session.host.networkPermissions?.requireAllowed(value.optString("streamUrl", value.optString("url")))
                     value.put("allowedDomains", JSONArray(domains))
@@ -378,7 +398,7 @@ class ModuleRuntime(context: Context, private val http: ModuleHttpClient) {
                 "displayName:p.displayName,homepage:p.homepage,repository:p.repository,license:p.license,type:p.type," +
                 "minAppVersion:p.minAppVersion,requiredRuntimeFeatures:p.requiredRuntimeFeatures,iconBase64:p.iconBase64,authentication:p.authentication," +
                 "labels:[...(Array.isArray(p.labels)?p.labels:[]),...(Array.isArray(p.tags)?p.tags:[])]," +
-                "settings:p.settings||{},capabilities:['searchTracks','getTrackStreamUrl','getAlbum','getArtist','getPlaylist'].filter(k=>typeof p[k]==='function')};})());",
+                "settings:p.settings||{},capabilities:['searchTracks','getTrackStreamUrl','getAlbum','getArtist','getPlaylist','onPlaybackError'].filter(k=>typeof p[k]==='function')};})());",
         )
         val parsed = ModuleManifest.parse(JSONObject(manifest).put("authentication", host.authentication).put("appAttestation", host.attestationDeclared))
         host.attestedModule = if (parsed.appAttestation) parsed.id else null

@@ -249,6 +249,7 @@ import moe.rukamori.archivetune.modules.ModuleAudioSelection
 import moe.rukamori.archivetune.modules.ModuleDiagnostics
 import moe.rukamori.archivetune.modules.ModuleDownloadRepository
 import moe.rukamori.archivetune.modules.ModuleMediaStorage
+import moe.rukamori.archivetune.modules.ModulePlaybackFailure
 import moe.rukamori.archivetune.modules.ModuleRepository
 import moe.rukamori.archivetune.modules.ResolveModuleAudioUseCase
 import moe.rukamori.archivetune.modules.displayAuthor
@@ -407,6 +408,8 @@ class MusicService :
 
     private val activeModuleAudio = ConcurrentHashMap<String, ModuleAudioSelection>()
     private val moduleSourceOutcomes = ConcurrentHashMap<String, ResolvedModuleSourceOutcome>()
+    private val modulePlaybackRecoveryPolicy = ModulePlaybackRecoveryPolicy()
+    private val moduleFailureMessages = ConcurrentHashMap<String, String>()
 
     private data class ResolvedModuleSourceOutcome(
         val outcome: ModuleSourceOutcome,
@@ -7333,6 +7336,7 @@ class MusicService :
         }
         if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
             playbackStreamRecoveryTracker.onMediaItemChanged(currentMediaId)
+            modulePlaybackRecoveryPolicy.onMediaItemChanged(currentMediaId)
         }
         if (
             (events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) && player.playbackState == Player.STATE_READY) ||
@@ -7340,6 +7344,7 @@ class MusicService :
         ) {
             if (player.isPlaying || (player.playbackState == Player.STATE_READY && !player.playWhenReady)) {
                 playbackStreamRecoveryTracker.onPlaybackRecovered(currentMediaId)
+                modulePlaybackRecoveryPolicy.onPlaybackRecovered(currentMediaId)
             }
             ensureAudiblePlaybackVolume("player_event")
         }
@@ -7691,7 +7696,7 @@ class MusicService :
         val resolved = moduleSourceOutcomes[item.mediaId]
         return when (val outcome = resolved?.outcome) {
             is ModuleSourceOutcome.Selected -> {
-                outcome.selection.toFailureSource(outcome.offline, preparationFailed)
+                outcome.selection.toFailureSource(outcome.offline, preparationFailed, moduleFailureMessages[item.mediaId])
             }
 
             is ModuleSourceOutcome.Failed -> {
@@ -7716,6 +7721,7 @@ class MusicService :
     private fun ModuleAudioSelection.toFailureSource(
         offline: Boolean,
         preparationFailed: Boolean,
+        moduleMessage: String? = null,
     ): PlaybackFailureSource.Module =
         PlaybackFailureSource.Module(
             name = module.displayLabel,
@@ -7730,6 +7736,7 @@ class MusicService :
             sampleRate = stream.sampleRate,
             offline = offline,
             preparationFailed = preparationFailed,
+            moduleMessage = moduleMessage,
         )
 
     private inline fun <reified T : Throwable> Throwable.hasCause(): Boolean {
@@ -7747,13 +7754,77 @@ class MusicService :
         surfaceUnrecoveredPlaybackError(error)
     }
 
+    private suspend fun recoverModulePlaybackError(
+        error: PlaybackException,
+        recoverySnapshot: PlaybackRecoverySnapshot,
+        selection: ModuleAudioSelection,
+    ): Boolean {
+        val mediaId = recoverySnapshot.mediaId
+        val outcome = moduleSourceOutcomes[mediaId]?.outcome
+        if (outcome is ModuleSourceOutcome.Selected && outcome.offline) return false
+        val httpStatus = findStreamHttpFailure(error)?.responseCode
+        val category = ModulePlaybackRecoveryPolicy.category(error.errorCode, httpStatus)
+        val duration = player.duration.takeIf { it > 0L && it != C.TIME_UNSET }
+        val failure =
+            ModulePlaybackFailure(
+                category = category.id,
+                errorCode = error.errorCode,
+                errorCodeName = error.errorCodeName,
+                httpStatus = httpStatus,
+                positionMs = recoverySnapshot.positionMs,
+                durationMs = duration,
+                attempt = modulePlaybackRecoveryPolicy.retriesUsed(mediaId, selection.module.id) + 1,
+                variant = selection.stream.variant,
+                mimeType = selection.stream.mimeType,
+            )
+        val decision = withContext(Dispatchers.IO) { moduleAudio.handlePlaybackError(selection, failure) }
+        if (player.currentMediaItem?.mediaId != mediaId || player.playerError !== error) return true
+        return when (val step = modulePlaybackRecoveryPolicy.step(mediaId, selection.module.id, decision)) {
+            is ModulePlaybackRecoveryStep.Retry -> {
+                val refreshed =
+                    withContext(Dispatchers.IO) {
+                        if (category == ModulePlaybackErrorCategory.PARSING || category == ModulePlaybackErrorCategory.DECODING) {
+                            try {
+                                playerCache.removeResource(selection.cacheKey)
+                            } catch (failure: IOException) {
+                                Timber.tag("MusicService").w(failure, "Failed to remove module stream cache for %s", mediaId)
+                            }
+                        }
+                        moduleAudio.retry(selection, failure.copy(attempt = step.attempt))
+                    } ?: return false
+                if (player.currentMediaItem?.mediaId != mediaId || player.playerError !== error) return true
+                Timber.tag("MusicService").i(
+                    "Retrying module playback for %s (attempt %d, variant %s)",
+                    mediaId,
+                    step.attempt,
+                    refreshed.stream.variant,
+                )
+                preparePlaybackFromSnapshot(recoverySnapshot)
+            }
+
+            ModulePlaybackRecoveryStep.Fallback -> {
+                moduleAudio.exclude(mediaId, selection.module.id)
+                Timber.tag("MusicService").i("Module requested fallback for %s", mediaId)
+                preparePlaybackFromSnapshot(recoverySnapshot)
+            }
+
+            is ModulePlaybackRecoveryStep.Fail -> {
+                val message = step.message
+                if (message != null) moduleFailureMessages[mediaId] = message else moduleFailureMessages.remove(mediaId)
+                false
+            }
+
+            ModulePlaybackRecoveryStep.Default -> false
+        }
+    }
+
     private suspend fun handlePlaybackError(
         error: PlaybackException,
         recoverySnapshot: PlaybackRecoverySnapshot,
     ) {
         val currentMediaId = recoverySnapshot.mediaId
-        if (activeModuleAudio.containsKey(currentMediaId)) {
-            finishUnrecoveredPlaybackError(error)
+        activeModuleAudio[currentMediaId]?.let { selection ->
+            if (!recoverModulePlaybackError(error, recoverySnapshot, selection)) finishUnrecoveredPlaybackError(error)
             return
         }
         val isLocalMedia = currentMediaId.isLocalMediaId() ||
@@ -8281,6 +8352,7 @@ class MusicService :
         val consulted =
             if (outcome is ModuleSourceOutcome.Fallback) consultedModules(outcome.startedAtMs) else emptyList()
         moduleSourceOutcomes[mediaId] = ResolvedModuleSourceOutcome(outcome, consulted)
+        moduleFailureMessages.remove(mediaId)
         if (moduleSourceOutcomes.size > 256) {
             moduleSourceOutcomes.keys.filter { it != mediaId }.take(moduleSourceOutcomes.size - 256).forEach(moduleSourceOutcomes::remove)
         }

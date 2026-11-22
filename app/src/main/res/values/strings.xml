@@ -637,6 +637,7 @@
     <string name="playback_error_source_module_version">Module · %1$s</string>
     <string name="playback_error_verdict_module">This problem came from the module, not YouTube Music.</string>
     <string name="playback_error_verdict_module_device">The module delivered the stream, but this device couldn\'t play it.</string>
+    <string name="playback_error_verdict_module_message">%1$s reported: %2$s</string>
     <string name="playback_error_verdict_module_preparation">The module couldn\'t prepare its audio stream. YouTube Music wasn\'t used.</string>
     <string name="playback_error_verdict_module_pipeline">The module system failed before any stream was ready. YouTube Music wasn\'t used.</string>
     <string name="playback_error_verdict_youtube_music">This problem came from YouTube Music, not a module.</string>

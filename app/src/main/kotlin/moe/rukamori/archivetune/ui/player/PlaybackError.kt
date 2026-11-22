@@ -1368,12 +1368,14 @@ private fun playbackSourcePresentation(
                 icon = R.drawable.extension,
                 verdict =
                     when {
+                        source.moduleMessage != null ->
+                            stringResource(R.string.playback_error_verdict_module_message, source.name, source.moduleMessage)
                         source.preparationFailed -> stringResource(R.string.playback_error_verdict_module_preparation)
                         step == PlaybackFailureStep.Device -> stringResource(R.string.playback_error_verdict_module_device)
                         step == PlaybackFailureStep.Connection -> stringResource(R.string.playback_error_verdict_connection, source.name)
                         else -> stringResource(R.string.playback_error_verdict_module)
                     },
-                blamesSource = source.preparationFailed || step == PlaybackFailureStep.Source || step == null,
+                blamesSource = source.moduleMessage != null || source.preparationFailed || step == PlaybackFailureStep.Source || step == null,
             )
         }
 
@@ -1471,6 +1473,7 @@ private fun playbackFailureSourceReport(source: PlaybackFailureSource): String =
                 "sampleRate=${source.sampleRate ?: 0}",
                 "offline=${source.offline}",
                 "preparationFailed=${source.preparationFailed}",
+                "moduleHandled=${source.moduleMessage != null}",
             ).joinToString("; ")
         }
 

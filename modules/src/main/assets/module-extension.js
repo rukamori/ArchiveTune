@@ -192,7 +192,7 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
       await start(context);
       let outcome;
       try {
-        outcome=await registered.download(id,quality,'/resolved/audio',()=>{}, {duration_ms:(context?.track?.duration || 0)*1000,preparedContext:prepared.get(String(id)),song:context?.song ?? null});
+        outcome=await registered.download(id,quality,'/resolved/audio',()=>{}, {duration_ms:(context?.track?.duration || 0)*1000,preparedContext:prepared.get(String(id)),song:context?.song ?? null,playbackError:context?.playbackError ?? null});
       } catch(error) { if (!transfer) throw error; }
       if (!transfer) {
         const error=new Error('Extension did not resolve a playable transfer');
@@ -213,8 +213,12 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
     }
   };
   ['getAlbum','getArtist','getPlaylist'].forEach(key=>{if(typeof registered[key]==='function')provider[key]=registered[key].bind(registered);});
+  if (typeof registered.onPlaybackError==='function') provider.onPlaybackError=async (error,context)=>{
+    await start(context);
+    return registered.onPlaybackError(error,{song:context?.song ?? null,track:context?.track ?? null});
+  };
   if (metadata.declaredCapabilities) {
-    const known=['searchTracks','getTrackStreamUrl','getAlbum','getArtist','getPlaylist'];
+    const known=['searchTracks','getTrackStreamUrl','getAlbum','getArtist','getPlaylist','onPlaybackError'];
     const actual=known.filter(key=>typeof provider[key]==='function');
     if (actual.length!==metadata.declaredCapabilities.length || actual.some(key=>!metadata.declaredCapabilities.includes(key))) throw new TypeError('Extension capability mismatch');
   }

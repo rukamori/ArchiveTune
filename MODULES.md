@@ -21,6 +21,7 @@ not provide an audio service or a working lossless provider.
 - [JavaScript entry point](#javascript-entry-point)
 - [Track search](#track-search)
 - [Stream resolution and lossless audio](#stream-resolution-and-lossless-audio)
+- [Playback error handling](#playback-error-handling)
 - [Host APIs and limits](#host-apis-and-limits)
 - [App attestation](#app-attestation)
 - [Package and install](#package-and-install)
@@ -169,9 +170,11 @@ need conversion to `.arch`. See [Extension compatibility](#extension-compatibili
 for package, authentication, and transfer behavior.
 
 Supported capability names are `searchTracks`, `getTrackStreamUrl`, `getAlbum`,
-`getArtist`, and `getPlaylist`. Only the first two are called by automatic audio
-resolution. Optional album/artist/playlist capabilities are informational in the
-current application, declaring them does not create browsing UI.
+`getArtist`, `getPlaylist`, and `onPlaybackError`. The first two are called by
+automatic audio resolution, and `onPlaybackError` is called when your stream fails
+during playback, see [Playback error handling](#playback-error-handling).
+Optional album/artist/playlist capabilities are informational in the current
+application, declaring them does not create browsing UI.
 
 Manifest identity, metadata, labels, and settings override corresponding script
 properties. Do not duplicate them in `module.exports`. Capability declarations
@@ -419,6 +422,61 @@ fallback only according to its own declared settings. The application continues
 through the committed enabled-provider order and then YouTube when resolution
 fails, a module cannot force the application's other providers to select a
 particular quality.
+
+## Playback error handling
+
+By default, an error while a module stream is playing is final: playback stops,
+or skips to the next song when **Auto skip to next song when error occurs** is on, and the error dialog
+names your module. Export and declare `onPlaybackError` to decide what happens
+instead. Older ArchiveTune builds reject the unknown capability during
+installation, so the handler is never silently ignored.
+
+Signature: `onPlaybackError(error, context)`. `context` has the same `settings`,
+`track`, and `song` fields as stream resolution. `error` describes the failure:
+
+| Field | Meaning |
+| --- | --- |
+| `trackId` | The provider track ID whose stream failed. |
+| `category` | `http`, `network`, `timeout`, `parsing`, `decoding`, `audio_output`, or `other`. |
+| `httpStatus` | Status of the failed media request when the server answered, otherwise `null`. |
+| `code` / `errorCode` | Media3 error name and number, for example `ERROR_CODE_IO_BAD_HTTP_STATUS` / `2004`. Diagnostic only, prefer `category` for decisions. |
+| `positionMs` / `durationMs` | Playback position at the failure, and the known duration or `null`. |
+| `attempt` | `1` for the first failure of this stream, higher after retries. |
+| `variant` / `mimeType` | The failing stream's declared variant and MIME type. |
+
+Return one of these actions, as an object `{action: "..."}` or as the bare string:
+
+| Action | Host behavior |
+| --- | --- |
+| `retry` | Calls `getTrackStreamUrl` again for the same track with `context.playbackError` set to the `error` object, then resumes at the failed position. Use it to refresh an expired or rejected URL, or to pick another mirror or quality. At most 2 retries per song and module. The budget resets once playback is running again or another song plays. Parsing and decoding retries also discard this stream's partially cached audio. |
+| `fallback` | Skips your module for this song for 10 minutes and resolves again through the next enabled module, then YouTube. Allowed once per song and module. |
+| `fail` | Stops with your explanation: `{action: "fail", message: "Your session expired. Sign in again in module settings."}`. The error dialog shows it beside your module name. Control characters are removed and the message is cut to 200 characters. Never include tokens or URLs. |
+| `default`, `null`, or nothing | Normal handling, as if no handler existed. |
+
+When a retry or fallback budget is used up, the host applies `default`. The
+handler has 10 seconds. A handler that throws, times out, or returns an unknown
+action is treated as `default`, and the module diagnostics record it. A retry
+whose `getTrackStreamUrl` call fails also ends in `default`. The handler is not
+called for completed offline downloads or for failures before your stream was
+selected. A thrown `getTrackStreamUrl` already moves on to the next provider.
+Each decision is recorded as the module's last playback outcome, for example
+`PLAYBACK/HTTP/403/RETRY`.
+
+```javascript
+async function onPlaybackError(error, context) {
+  if (error.category === 'http' && error.httpStatus === 403 && error.attempt === 1) return 'retry';
+  if (error.category === 'http' && error.httpStatus === 401) {
+    return {action: 'fail', message: 'Your account session expired. Open the module settings and sign in again.'};
+  }
+  if (error.category === 'decoding') return 'fallback';
+  return 'default';
+}
+```
+
+On the retry, `getTrackStreamUrl(trackId, quality, context)` sees
+`context.playbackError` and can choose a different source. Extension-runtime
+modules register `onPlaybackError(error, context)` with `registerExtension`, and
+receive the same object in `download`'s `options.playbackError`.
 
 ## Host APIs and limits
 
@@ -906,7 +964,8 @@ ArchiveTune even when the extension runtime is selected.
 | `registerExtension(object)` | Exactly one registration with callable track-search and download methods is required. |
 | `initialize(settings)` | Receives flat, typed setting values. Initialization runs when that engine's configuration changes, a returned `false` fails the operation. |
 | `searchTracks(query, limit, options)` | `options.song` is the [song context](#song-context). Results are mapped from extension fields such as `name`, `artists`, `album_name`, and `duration_ms` before the existing recording matcher runs. |
-| `download(id, quality, outputPath, onProgress, options)` | `options.song` is the [song context](#song-context). Runs in transfer-resolution mode. The host captures the first file-transfer request and stops the extension's download pipeline there. No successful file download or local output path is fabricated. |
+| `onPlaybackError(error, context)` | Optional. Same contract as [Playback error handling](#playback-error-handling). `context.song` and `context.track` are supplied, settings arrive through `initialize`. |
+| `download(id, quality, outputPath, onProgress, options)` | `options.song` is the [song context](#song-context). `options.playbackError` is set when the host retries after `onPlaybackError` returned `retry`. Runs in transfer-resolution mode. The host captures the first file-transfer request and stops the extension's download pipeline there. No successful file download or local output path is fabricated. |
 | `http.get/head/delete(url, headers)` | Synchronous, cancellable HTTP with status, body, final URL, headers, and permission checks. Nested `headers`/`params` options are accepted for GET helpers. |
 | `http.post/put/patch(url, body, headers)` | String bodies are preserved, object bodies are JSON encoded. Content type defaults to JSON when a body is present. |
 | `http.request(url, options)` | Generic synchronous request with `method`, `headers`, and `body`. |
@@ -988,6 +1047,8 @@ target app/device before publishing compatibility claims.
 - Check that changing YouTube quality does not change your module's request.
 - If you use app attestation, confirm that your server rejects a debug build, a
   build signed with another key, and a replayed nonce or request signature.
+- If you export `onPlaybackError`, check each action against a real failing
+  stream, and confirm that it returns `default` once your own recovery is exhausted.
 - Verify playback and applicable downloads against your real service.
 - Publish source, service requirements, supported qualities, version history,
   and the ArchiveTune build/API versions you actually checked. Do not claim

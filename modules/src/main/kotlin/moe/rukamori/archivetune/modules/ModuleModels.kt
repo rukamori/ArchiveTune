@@ -202,6 +202,31 @@ data class ModuleSong(
     }
 }
 
+sealed interface ModulePlaybackDecision {
+    data object Retry : ModulePlaybackDecision
+    data object Fallback : ModulePlaybackDecision
+    data class Fail(val message: String?) : ModulePlaybackDecision
+    data object Default : ModulePlaybackDecision
+}
+
+data class ModulePlaybackFailure(
+    val category: String,
+    val errorCode: Int,
+    val errorCodeName: String,
+    val httpStatus: Int?,
+    val positionMs: Long,
+    val durationMs: Long?,
+    val attempt: Int,
+    val variant: String,
+    val mimeType: String,
+) {
+    fun json(trackId: String): org.json.JSONObject = org.json.JSONObject()
+        .put("trackId", trackId).put("category", category).put("code", errorCodeName).put("errorCode", errorCode)
+        .put("httpStatus", httpStatus ?: org.json.JSONObject.NULL).put("positionMs", positionMs)
+        .put("durationMs", durationMs ?: org.json.JSONObject.NULL).put("attempt", attempt)
+        .put("variant", variant).put("mimeType", mimeType)
+}
+
 data class ModuleStream(
     val url: String,
     val headers: Map<String, String>,

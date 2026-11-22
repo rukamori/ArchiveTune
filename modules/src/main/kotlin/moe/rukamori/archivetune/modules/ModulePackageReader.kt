@@ -27,7 +27,7 @@ import java.util.zip.ZipInputStream
 object ModulePackageReader {
     private const val MANIFEST_LIMIT = 128 * 1024
     private const val SCRIPT_LIMIT = 3 * 1024 * 1024
-    private val capabilities = listOf("searchTracks", "getTrackStreamUrl", "getAlbum", "getArtist", "getPlaylist")
+    private val capabilities = listOf("searchTracks", "getTrackStreamUrl", "getAlbum", "getArtist", "getPlaylist", "onPlaybackError")
 
     fun isPackage(bytes: ByteArray): Boolean = bytes.size >= 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4b.toByte() &&
         ((bytes[2] == 3.toByte() && bytes[3] == 4.toByte()) || (bytes[2] == 5.toByte() && bytes[3] == 6.toByte()))

@@ -34,6 +34,7 @@ sealed interface PlaybackFailureSource {
         val sampleRate: Int?,
         val offline: Boolean,
         val preparationFailed: Boolean,
+        val moduleMessage: String? = null,
     ) : PlaybackFailureSource
 
     data object ModulePipeline : PlaybackFailureSource

@@ -538,6 +538,7 @@ class ModuleSettingsViewModel @Inject constructor(private val useCases: ModuleSe
                 "getAlbum" -> R.string.modules_capability_album
                 "getArtist" -> R.string.modules_capability_artist
                 "getPlaylist" -> R.string.modules_capability_playlist
+                "onPlaybackError" -> R.string.modules_capability_playback_errors
                 else -> null
             }
         })
