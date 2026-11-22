@@ -17,18 +17,21 @@ import okhttp3.Credentials
 import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import timber.log.Timber
 import java.net.Inet6Address
 import java.net.Proxy
 
 internal fun playbackNetworkConfiguration(context: Context): YoutubeiNetworkConfiguration {
     val manager = requireNotNull(context.getSystemService(ConnectivityManager::class.java))
     val network = manager.activeNetwork
+    val networkIdentity = "${network?.networkHandle}:${network?.let(manager::getLinkProperties)}"
+    val proxy = YouTube.streamProxy
     return YoutubeiNetworkConfiguration(
-        proxy = YouTube.streamProxy,
+        proxy = proxy,
         proxyUsername = YouTube.proxyUsername,
         proxyPassword = YouTube.proxyPassword,
-        dns = YouTube.dns,
-        networkIdentity = "${network?.networkHandle}:${network?.let(manager::getLinkProperties)}",
+        dns = if (proxy == null) playbackAddressFamilyFallback.dns(networkIdentity, YouTube.dns) else YouTube.dns,
+        networkIdentity = networkIdentity,
     )
 }
 
@@ -64,6 +67,11 @@ internal class PlaybackHttpClient(
                 .connectionPool(connectionPool())
                 .proxy(current.proxy ?: Proxy.NO_PROXY)
                 .dns(dns)
+                .eventListener(
+                    playbackAddressFamilyFallback.connectionListener(current.networkIdentity) {
+                        Timber.w("IPv6 connection to YouTube media failed; using IPv4 on this network")
+                    },
+                )
                 .proxyAuthenticator { _, response ->
                     if (current.proxy == null || username.isNullOrBlank() || password.isNullOrBlank() ||
                         response.request.header("Proxy-Authorization") != null
@@ -82,5 +90,3 @@ internal class PlaybackHttpClient(
         return requireNotNull(client).newCall(request)
     }
 }
-
-private fun String.isGoogleVideoHost(): Boolean = this == "googlevideo.com" || endsWith(".googlevideo.com")
