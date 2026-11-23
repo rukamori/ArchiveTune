@@ -653,7 +653,6 @@
     <string name="enable_youlyplus_lyrics">YouLyPlus の歌詞を有効にする</string>
     <string name="enable_binimum_lyrics">ビニマムの歌詞を有効にする</string>
     <string name="enable_lrcred_lyrics">lrc.red の歌詞を有効にする</string>
-    <string name="enable_musixmatch_lyrics">Musixmatch の歌詞を有効にする</string>
     <string name="binimum_lyrics" translatable="false">ビニマム 歌詞</string>
     <string name="enable_unison_lyrics">ユニゾン歌詞を有効にする</string>
     <string name="enable_simpmusic_lyrics">SimpMusic の歌詞を有効にする</string>

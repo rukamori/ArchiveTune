@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import moe.rukamori.archivetune.constants.EnableBetterLyricsKey
 import moe.rukamori.archivetune.constants.EnableBetterLyricsPortatoKey
 import moe.rukamori.archivetune.constants.EnableBinimumLyricsKey
-import moe.rukamori.archivetune.constants.EnableMusixmatchLyricsKey
 import moe.rukamori.archivetune.constants.EnableKugouKey
 import moe.rukamori.archivetune.constants.EnableLrcLibKey
 import moe.rukamori.archivetune.constants.EnableLrcRedLyricsKey
@@ -82,7 +81,6 @@ class LyricsHelper
                 PaxsenixAppleMusicLyricsProvider,
                 PaxsenixSpotifyLyricsProvider,
                 PaxsenixMusixmatchLyricsProvider,
-                MusixmatchLyricsProvider,
                 YouTubeSubtitleLyricsProvider,
                 YouTubeLyricsProvider,
             )
@@ -102,7 +100,6 @@ class LyricsHelper
                 PaxsenixAppleMusicLyricsProvider to EnablePaxsenixAppleMusicLyricsKey,
                 PaxsenixSpotifyLyricsProvider to EnablePaxsenixSpotifyLyricsKey,
                 PaxsenixMusixmatchLyricsProvider to EnablePaxsenixMusixmatchLyricsKey,
-                MusixmatchLyricsProvider to EnableMusixmatchLyricsKey,
             )
 
         private val paxsenixProviders =
@@ -451,7 +448,6 @@ class LyricsHelper
                     PreferredLyricsProvider.PAXSENIX_APPLE_MUSIC to PaxsenixAppleMusicLyricsProvider,
                     PreferredLyricsProvider.PAXSENIX_SPOTIFY to PaxsenixSpotifyLyricsProvider,
                     PreferredLyricsProvider.PAXSENIX_MUSIXMATCH to PaxsenixMusixmatchLyricsProvider,
-                    PreferredLyricsProvider.MUSIXMATCH to MusixmatchLyricsProvider,
                     PreferredLyricsProvider.UNISON to UnisonLyricsProvider,
                 )
             val userOrdered = orderedEnums.mapNotNull { providerMap[it] }
