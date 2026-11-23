@@ -1231,18 +1231,10 @@ private fun LyricsStyleSwatch(
                             .background(style.surfaceTint.copy(alpha = style.surfaceAlpha))
                             .background(style.overlayColor.copy(alpha = style.overlayAlpha)),
                 )
-                AnimatedVisibility(
+                LyricsStyleSwatchCheck(
                     visible = selected,
-                    enter = scaleIn(motion.fastSpatialSpec(), initialScale = 0.4f) + fadeIn(motion.fastEffectsSpec()),
-                    exit = scaleOut(motion.fastSpatialSpec(), targetScale = 0.4f) + fadeOut(motion.fastEffectsSpec()),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.check),
-                        contentDescription = null,
-                        tint = style.textColor,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+                    tint = style.textColor,
+                )
             }
         }
         Text(
@@ -1253,6 +1245,27 @@ private fun LyricsStyleSwatch(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun LyricsStyleSwatchCheck(
+    visible: Boolean,
+    tint: Color,
+) {
+    val motion = MaterialTheme.motionScheme
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = scaleIn(motion.fastSpatialSpec(), initialScale = 0.4f) + fadeIn(motion.fastEffectsSpec()),
+        exit = scaleOut(motion.fastSpatialSpec(), targetScale = 0.4f) + fadeOut(motion.fastEffectsSpec()),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.check),
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
         )
     }
 }
