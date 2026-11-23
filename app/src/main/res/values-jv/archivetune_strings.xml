@@ -176,7 +176,6 @@
     <string name="lyrics_share_show_cover">Tampilake sampul album</string>
     <string name="lyrics_share_show_cover_desc">Sertakan sampul di header gambar yang diekspor.</string>
     <string name="lyrics_share_export_failed">Gagal membuat gambar: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Berbagi gambar memerlukan Android 6.0 atau lebih baru</string>
     <string name="more_options">Opsi lainnya</string>
     <string name="remove_from_cache">Busak dari cache</string>
     <string name="select">Pilih semua</string>

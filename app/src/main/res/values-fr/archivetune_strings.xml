@@ -230,7 +230,6 @@
     <string name="lyrics_share_show_cover">Afficher la pochette de l\'album</string>
     <string name="lyrics_share_show_cover_desc">Intégrez l\'illustration dans l\'en-tête de l\'image exportée.</string>
     <string name="lyrics_share_export_failed">Échec de la création de l\'image : %1$s</string>
-    <string name="lyrics_share_export_not_supported">Le partage d\'images nécessite Android 6.0 ou une version plus récente</string>
     <string name="lyrics_sync_offset">Décalage de la synchronisation des paroles</string>
     <string name="audio_crossfade_seconds">%1$s s</string>
     <string name="crossfade_gapless_title">Fondu enchaîné sans interruption</string>

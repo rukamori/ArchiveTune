@@ -198,7 +198,6 @@
     <string name="lyrics_share_style_deep_blur">טשטוש עמוק</string>
     <string name="lyrics_share_style_vivid_glow">זוהר חי</string>
     <string name="lyrics_share_export_failed">יצירת תמונה נכשלה: %1$s</string>
-    <string name="lyrics_share_export_not_supported">שיתוף תמונות דורש אנדרואיד 6.0 ומעלה</string>
     <string name="more_options">אפשרויות נוספות</string>
     <string name="remove_from_cache">הסרה מהמטמון</string>
     <string name="select">בחר הכל</string>

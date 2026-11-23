@@ -407,7 +407,6 @@
     <string name="lyrics_share_style_deep_blur">Derin bulanıklık</string>
     <string name="lyrics_share_style_vivid_glow">Canlı parlaklık</string>
     <string name="lyrics_share_export_failed">Resim oluşturma başarısız oldu: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Resim paylaşma Android 6.0 veya üstü gerektirir</string>
     <string name="arrange_playlist_tags">Çalma listesi etiketlerini düzenleyin</string>
     <string name="arrange_playlist_tags_desc">Kütüphanenizde gösterilen etiket filtrelerinin sıralarını belirleyin</string>
     <string name="block_artist">Sanatçıyı engelle</string>

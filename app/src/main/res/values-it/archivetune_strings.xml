@@ -233,7 +233,6 @@
     <string name="lyrics_share_show_cover">Mostra copertina album</string>
     <string name="lyrics_share_show_cover_desc">Includi l\'artwork nell\'header dell\'immagine esportata.</string>
     <string name="lyrics_share_export_failed">Impossibile creare immagine: %1$s</string>
-    <string name="lyrics_share_export_not_supported">La condivisione immagine richiese Android 6.0 o superiore</string>
     <string name="crop_thumbnail_to_square">Ritaglia thumbnails a 1:1</string>
     <string name="crop_thumbnail_to_square_desc">Mostra le thumbnails di YouTube in formato quadrato invece di 16:9</string>
     <string name="show_home_category_chips">Mostra chip categorie nella home</string>

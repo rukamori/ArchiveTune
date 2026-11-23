@@ -199,7 +199,6 @@
     <string name="lyrics_share_style_deep_blur">Desfoque profundo</string>
     <string name="lyrics_share_style_vivid_glow">Brilho vívido</string>
     <string name="lyrics_share_export_failed">Falha ao criar imagem: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Compartilhamento de imagem requer Android 6.0 ou mais recente</string>
     <string name="more_options">Mais opções</string>
     <string name="remove_from_cache">Remover do cache</string>
     <string name="select">Selecionar tudo</string>

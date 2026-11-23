@@ -230,7 +230,6 @@
     <string name="lyrics_share_show_cover">Mostrar portada del álbum</string>
     <string name="lyrics_share_show_cover_desc">Incluye la imagen en el encabezado de la imagen exportada.</string>
     <string name="lyrics_share_export_failed">Error al crear la imagen: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Para compartir imágenes se requiere Android 6.0 o superior</string>
     <string name="lyrics_sync_offset">Desfase de sincronización de la letra</string>
     <string name="audio_crossfade_seconds">%1$s seg</string>
     <string name="crossfade_gapless_title">Reproducción continua</string>

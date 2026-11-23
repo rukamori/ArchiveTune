@@ -261,7 +261,6 @@
     <string name="lyrics_share_style_deep_blur">Blur mendalam</string>
     <string name="lyrics_share_style_vivid_glow">Kilau cerah</string>
     <string name="lyrics_share_export_failed">Gagal membuat gambar: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Berbagi gambar memerlukan Android 6.0 atau lebih baru</string>
     <string name="more_options">Opsi lainnya</string>
     <string name="remove_from_cache">Hapus dari cache</string>
     <string name="select">Pilih semua</string>

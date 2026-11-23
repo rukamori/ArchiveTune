@@ -388,7 +388,6 @@
     <string name="lyrics_share_style_deep_blur">ضبابية عميقة</string>
     <string name="lyrics_share_style_vivid_glow">توهج حيوي</string>
     <string name="lyrics_share_export_failed">فشل إنشاء الصورة: %1$s</string>
-    <string name="lyrics_share_export_not_supported">تتطلب مشاركة الصور إصدار Android 6.0 أو أحدث</string>
     <string name="block_artist">حظر الفنان</string>
     <string name="unblock_artist">إلغاء حظر الفنان</string>
     <string name="crop_thumbnail_to_square">قص الصور المصغرة إلى 1:1</string>

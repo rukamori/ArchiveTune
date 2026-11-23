@@ -339,6 +339,8 @@
     <string name="lyrics_share_layout_square">Square</string>
     <string name="lyrics_share_layout_portrait">Portrait</string>
     <string name="lyrics_share_layout_story">Story</string>
+    <string name="lyrics_share_style">Style</string>
+    <string name="lyrics_share_adjust">Adjust</string>
     <string name="lyrics_share_resolution_value">%1$d x %2$d</string>
     <string name="lyrics_share_background_blur">Background blur</string>
     <string name="lyrics_share_background_blur_value">%1$d px</string>
@@ -365,7 +367,6 @@
     <string name="lyrics_share_style_deep_blur">Deep blur</string>
     <string name="lyrics_share_style_vivid_glow">Vivid glow</string>
     <string name="lyrics_share_export_failed">Failed to create image: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Image sharing requires Android 6.0 or newer</string>
     <string name="more_options">More options</string>
     <string name="remove_from_cache">Remove from cache</string>
     <string name="select">Select all</string>

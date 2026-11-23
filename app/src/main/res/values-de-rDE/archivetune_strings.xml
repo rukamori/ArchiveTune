@@ -297,7 +297,6 @@
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Album-Cover anzeigen</string>
     <string name="lyrics_share_export_failed">Fehler bei Bildgenerierung: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Für die Bildfreigabe ist Android 6.0 oder höher erforderlich</string>
     <string name="show_home_category_chips">Kategorie-Chips auf der Startseite anzeigen</string>
     <string name="show_home_category_chips_desc">Kategorie-Filter-Chips auf der Startseite anzeigen</string>
     <string name="player_design_v6">Ausdrucksvoll</string>

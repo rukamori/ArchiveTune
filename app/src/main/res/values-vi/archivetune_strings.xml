@@ -224,7 +224,6 @@
     <string name="lyrics_share_show_cover">Hiển thị bìa album</string>
     <string name="lyrics_share_show_cover_desc">Bao gồm tác phẩm nghệ thuật ở phần đầu của ảnh xuất.</string>
     <string name="lyrics_share_export_failed">Không thể tạo ảnh: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Chia sẻ ảnh yêu cầu Android 6.0 trở lên</string>
     <string name="lyrics_sync_offset">Độ trễ đồng bộ lời bài hát</string>
     <string name="audio_crossfade_seconds">%1$s giây</string>
     <string name="crossfade_gapless_title">Tắt cho album phát liền mạch</string>

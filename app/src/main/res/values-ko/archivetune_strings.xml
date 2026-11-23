@@ -105,7 +105,6 @@
     <string name="lyrics_share_show_cover">앨범 커버 표시</string>
     <string name="lyrics_share_show_cover_desc">내보낸 이미지 상단에 앨범 아트를 포함합니다.</string>
     <string name="lyrics_share_export_failed">이미지 생성 실패: %1$s</string>
-    <string name="lyrics_share_export_not_supported">이미지로 공유하려면 Android 6.0 이상 버전이 필요합니다.</string>
     <string name="more_options">추가 옵션</string>
     <string name="remove_from_cache">캐시에서 삭제</string>
     <string name="select">전체 선택</string>

@@ -233,7 +233,6 @@
     <string name="lyrics_share_show_cover">Показувати обкладинку альбому</string>
     <string name="lyrics_share_show_cover_desc">Включити ілюстрацію в верхню частину експортованого зображення.</string>
     <string name="lyrics_share_export_failed">Не вдалося створити зображення: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Для обміну зображеннями потрібна версія Android 6.0 або новіша</string>
     <string name="lyrics_sync_offset">Зсув синхронізації тексту пісні</string>
     <string name="audio_crossfade_seconds">%1$s сек</string>
     <string name="crossfade_gapless_title">Плавні переходи без проміжків</string>

@@ -262,7 +262,6 @@
     <string name="lyrics_share_show_cover">Показать обложку альбома</string>
     <string name="lyrics_share_show_cover_desc">Вставить обложку в заголовок экспортируемого изображения.</string>
     <string name="lyrics_share_export_failed">Не удалось создать изображение: %1$s</string>
-    <string name="lyrics_share_export_not_supported">Для обмена изображениями требуется Android 6.0 или новее</string>
     <string name="player_design_v7">Погружение</string>
     <string name="lyrics_sync_offset">Смещение синхронизации текста песни</string>
     <string name="lyrics_romanize_chinese">Романизировать китайский текст</string>

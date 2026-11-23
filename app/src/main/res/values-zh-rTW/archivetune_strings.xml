@@ -215,7 +215,6 @@
     <string name="lyrics_share_style_deep_blur">深度模糊</string>
     <string name="lyrics_share_style_vivid_glow">熠熠光彩</string>
     <string name="lyrics_share_export_failed">無法建立影像：%1$s</string>
-    <string name="lyrics_share_export_not_supported">圖片分享功能需要 Android 6.0 或更高版本</string>
     <string name="more_options">更多選項</string>
     <string name="remove_from_cache">從快取中移除</string>
     <string name="select">全選</string>

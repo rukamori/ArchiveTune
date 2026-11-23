@@ -382,7 +382,6 @@
     <string name="lyrics_share_style_deep_blur">深度模糊</string>
     <string name="lyrics_share_style_vivid_glow">绚丽光晕</string>
     <string name="lyrics_share_export_failed">生成图片失败：%1$s</string>
-    <string name="lyrics_share_export_not_supported">图片分享功能需要 Android 6.0 或更高版本</string>
     <string name="block_artist">屏蔽该艺人</string>
     <string name="unblock_artist">解除屏蔽该艺人</string>
     <string name="lyrics_background_style">歌词背景样式</string>
