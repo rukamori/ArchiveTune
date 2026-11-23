@@ -1551,6 +1551,7 @@ private fun CanvasProvider.restingShape(): RoundedPolygon =
         CanvasProvider.APPLE_MUSIC -> MaterialShapes.Clover4Leaf
         CanvasProvider.TIDAL -> MaterialShapes.PixelCircle
         CanvasProvider.SPOTIFY -> MaterialShapes.Cookie9Sided
+        CanvasProvider.MODULES -> MaterialShapes.SoftBurst
     }
 
 @Composable
