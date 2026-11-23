@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import moe.rukamori.archivetune.modules.ModuleTrackDetailsResult
 
 class ObserveMediaInfoUseCase @Inject constructor(private val repository: MediaInfoRepository) {
     operator fun invoke(videoId: String): Flow<MediaInfoData> = flow {
@@ -46,9 +47,18 @@ class ObserveMediaInfoUseCase @Inject constructor(private val repository: MediaI
                 isEmpty = { it.views == null && it.likes == null && it.dislikes == null },
             )
         }
+        val module = flow<MediaInfoState<ModuleTrackDetailsResult>> {
+            if (!repository.hasModuleMetadata()) {
+                emit(MediaInfoState.Empty)
+                return@flow
+            }
+            emit(MediaInfoState.Loading)
+            val result = repository.moduleMetadata(videoId, (initialLocal as? MediaInfoState.Success)?.data)
+            emit(result?.let { MediaInfoState.Success(it) } ?: MediaInfoState.Empty)
+        }.catch { failure -> emit(failure.asMediaInfoError()) }
         emitAll(
-            combine(local.onStart { emit(initialLocal) }, metadata, statistics) { details, info, numbers ->
-                MediaInfoData(details, info, numbers)
+            combine(local.onStart { emit(initialLocal) }, metadata, statistics, module) { details, info, numbers, provided ->
+                MediaInfoData(details, info, numbers, provided)
             },
         )
     }

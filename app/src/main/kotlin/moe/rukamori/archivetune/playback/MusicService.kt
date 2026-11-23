@@ -256,6 +256,7 @@ import moe.rukamori.archivetune.modules.displayAuthor
 import moe.rukamori.archivetune.modules.displayLabel
 import moe.rukamori.archivetune.modules.moduleDiagnosticLabel
 import moe.rukamori.archivetune.modules.moduleMatchMetadata
+import moe.rukamori.archivetune.modules.resolvesAudio
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.models.toMediaMetadata
@@ -8368,7 +8369,7 @@ class MusicService :
         if (!registry.enabled) return emptyList()
         val diagnostics = moduleDiagnostics.state.value
         return registry.modules
-            .filter { it.enabled }
+            .filter { it.resolvesAudio }
             .map { module ->
                 ConsultedModule(
                     name = module.displayLabel,

@@ -67,8 +67,9 @@ data class CanvasHealthStatus(
     val appleMusic: CanvasHealth = CanvasHealth.NOT_CHECKED,
     val tidal: CanvasHealth = CanvasHealth.NOT_CHECKED,
     val spotify: CanvasHealth = CanvasHealth.NOT_CHECKED,
+    val modules: CanvasHealth = CanvasHealth.NOT_CHECKED,
 ) {
     val checking: Boolean
         get() = betterLyrics == CanvasHealth.CHECKING || appleMusic == CanvasHealth.CHECKING ||
-            tidal == CanvasHealth.CHECKING || spotify == CanvasHealth.CHECKING
+            tidal == CanvasHealth.CHECKING || spotify == CanvasHealth.CHECKING || modules == CanvasHealth.CHECKING
 }

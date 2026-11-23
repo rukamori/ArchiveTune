@@ -19,6 +19,9 @@ data class ProviderLyrics(
 interface LyricsProvider {
     val name: String
 
+    val identity: String
+        get() = name
+
     fun isEnabled(context: Context): Boolean
 
     suspend fun getLyrics(

@@ -16,6 +16,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.canvas.models.matchesSongIdentity
+import moe.rukamori.archivetune.modules.ModuleCapabilities
+import moe.rukamori.archivetune.modules.ModuleContentRepository
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import timber.log.Timber
 import javax.inject.Inject
@@ -24,6 +26,7 @@ import javax.inject.Singleton
 @Singleton
 class CanvasArtworkRepository @Inject constructor(
     private val spotifyCanvas: SpotifyCanvasRepository,
+    private val moduleContent: ModuleContentRepository,
 ) {
     private val mutableRevision = MutableStateFlow(0L)
     val revision = mutableRevision.asStateFlow()
@@ -58,6 +61,7 @@ class CanvasArtworkRepository @Inject constructor(
             }
             try {
                 withTimeoutOrNull(if (provider == CanvasSource.SPOTIFY) 45_000L else 20_000L) {
+                    if (provider == CanvasSource.MODULES) return@withTimeoutOrNull moduleCanvas(request)
                     candidates.firstNotNullOfOrNull { (song, artist) ->
                         CanvasNetworkAccess.check(provider)
                         when (provider) {
@@ -71,7 +75,7 @@ class CanvasArtworkRepository @Inject constructor(
                             )
                             CanvasSource.TIDAL -> TidalCanvasProvider.getBySongArtist(song, artist, request.storefront)
                             CanvasSource.SPOTIFY -> spotifyCanvas.getBySongArtist(song, artist)
-                            CanvasSource.ALL -> error("Canvas lookup requires one provider")
+                            CanvasSource.MODULES, CanvasSource.ALL -> error("Canvas lookup requires one provider")
                         }?.takeIf { it.matches(request) }
                     }
                 }
@@ -92,8 +96,37 @@ class CanvasArtworkRepository @Inject constructor(
         artwork
     }
 
+    private suspend fun moduleCanvas(request: CanvasPlaybackRequest): CanvasArtwork? {
+        val song = moduleContent.song(request.mediaId, request.title, emptyList(), album = null, durationSeconds = 0)
+            ?: moduleContent.song(request.mediaId, request.title, listOf(request.artist), album = null, durationSeconds = 0)
+            ?: return null
+        for (module in moduleContent.providers(ModuleCapabilities.CANVAS)) {
+            CanvasNetworkAccess.check(CanvasSource.MODULES)
+            val canvas = try {
+                moduleContent.canvas(module, song)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Module canvas lookup failed")
+                null
+            } ?: continue
+            val artwork = CanvasArtwork(
+                source = CanvasSource.MODULES,
+                name = canvas.title ?: request.title,
+                artist = canvas.artist ?: request.artist,
+                static = canvas.staticImage,
+                animated = canvas.animated,
+                animatedVertical = canvas.animatedVertical,
+                videoUrl = canvas.videoUrl,
+                videoUrlVertical = canvas.videoUrlVertical,
+            )
+            if (artwork.matches(request)) return artwork
+        }
+        return null
+    }
+
     private companion object {
-        val providers = listOf(CanvasSource.BETTER_LYRICS, CanvasSource.APPLE_MUSIC, CanvasSource.TIDAL, CanvasSource.SPOTIFY)
+        val providers = listOf(CanvasSource.MODULES, CanvasSource.BETTER_LYRICS, CanvasSource.APPLE_MUSIC, CanvasSource.TIDAL, CanvasSource.SPOTIFY)
     }
 }
 

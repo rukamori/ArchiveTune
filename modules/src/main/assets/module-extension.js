@@ -217,8 +217,14 @@ globalThis.__moduleCreateExtension = function(metadata, load) {
     await start(context);
     return registered.onPlaybackError(error,{song:context?.song ?? null,track:context?.track ?? null});
   };
+  ['getLyrics','getTrackMetadata','getCanvas'].forEach(key=>{
+    if (typeof registered[key]==='function') provider[key]=async (song,context)=>{
+      await start(context);
+      return registered[key](song,{song:context?.song ?? song ?? null});
+    };
+  });
   if (metadata.declaredCapabilities) {
-    const known=['searchTracks','getTrackStreamUrl','getAlbum','getArtist','getPlaylist','onPlaybackError'];
+    const known=['searchTracks','getTrackStreamUrl','getAlbum','getArtist','getPlaylist','onPlaybackError','getLyrics','getTrackMetadata','getCanvas'];
     const actual=known.filter(key=>typeof provider[key]==='function');
     if (actual.length!==metadata.declaredCapabilities.length || actual.some(key=>!metadata.declaredCapabilities.includes(key))) throw new TypeError('Extension capability mismatch');
   }

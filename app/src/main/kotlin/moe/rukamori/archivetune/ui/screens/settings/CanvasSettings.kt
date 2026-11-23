@@ -159,6 +159,7 @@ private enum class CanvasProvider(
     APPLE_MUSIC(CanvasSource.APPLE_MUSIC, R.string.canvas_apple_music, R.drawable.music_note),
     TIDAL(CanvasSource.TIDAL, R.string.canvas_tidal, R.drawable.slow_motion_video),
     SPOTIFY(CanvasSource.SPOTIFY, R.string.canvas_spotify, R.drawable.spotify),
+    MODULES(CanvasSource.MODULES, R.string.modules_title, R.drawable.extension),
 }
 
 @Composable
@@ -1525,6 +1526,7 @@ private fun CanvasHealthStatus.of(provider: CanvasProvider): CanvasHealth =
         CanvasProvider.APPLE_MUSIC -> appleMusic
         CanvasProvider.TIDAL -> tidal
         CanvasProvider.SPOTIFY -> spotify
+        CanvasProvider.MODULES -> modules
     }
 
 private fun CanvasHealthStatus.overall(enabled: Boolean): CanvasHealth {

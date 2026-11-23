@@ -921,7 +921,7 @@
     <string name="canvas_spotify">Spotify</string>
     <string name="canvas_spotify_desc">Uses your connected Spotify account</string>
     <string name="canvas_source_all">All</string>
-    <string name="canvas_source_all_desc">Try BetterLyrics, Apple Music, TIDAL, then Spotify</string>
+    <string name="canvas_source_all_desc">Try modules, BetterLyrics, Apple Music, TIDAL, then Spotify</string>
     <string name="canvas_wifi_only">Use Wi-Fi only</string>
     <string name="canvas_wifi_only_desc">Turn off to allow mobile data. Downloaded canvases remain available offline.</string>
     <string name="canvas_provider_health">Provider health</string>

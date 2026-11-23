@@ -270,6 +270,23 @@ private fun MediaInfoContent(
                                     onRetry = onRetry,
                                 )
                             }
+                            when (val module = model.moduleDetails) {
+                                is MediaInfoState.Success -> {
+                                    Text(
+                                        text = stringResource(R.string.modules_metadata_section, module.data.moduleName),
+                                        style = MaterialTheme.typography.titleSmallEmphasized,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.semantics { heading() },
+                                    )
+                                    MediaInfoDetailGroup(items = module.data.items, onCopy = onCopy)
+                                }
+                                MediaInfoState.Loading, is MediaInfoState.Error -> MediaInfoStatusPanel(
+                                    title = stringResource(R.string.modules_metadata_title),
+                                    state = module,
+                                    onRetry = onRetry,
+                                )
+                                MediaInfoState.Empty -> Unit
+                            }
                         }
 
                         MediaInfoTab.Numbers -> {
@@ -652,6 +669,18 @@ private fun detailIconRes(@StringRes labelRes: Int): Int =
         R.string.loudness -> R.drawable.trending_up
         R.string.file_size -> R.drawable.storage
         R.string.volume -> R.drawable.volume_up
+        R.string.modules_field_album -> R.drawable.album
+        R.string.modules_field_album_artist -> R.drawable.person
+        R.string.modules_field_release_date -> R.drawable.calendar_today
+        R.string.modules_field_genres -> R.drawable.library_music
+        R.string.modules_field_composers, R.string.modules_field_key -> R.drawable.music_note
+        R.string.modules_field_lyricists -> R.drawable.lyrics
+        R.string.modules_field_producers -> R.drawable.mic
+        R.string.modules_field_bpm -> R.drawable.speed
+        R.string.modules_field_language -> R.drawable.language
+        R.string.modules_field_content_rating -> R.drawable.explicit
+        R.string.modules_field_artwork -> R.drawable.image
+        R.string.modules_field_link -> R.drawable.link
         else -> R.drawable.info
     }
 
@@ -669,6 +698,7 @@ private fun MediaInfoDetailGroup(
     ) {
         items.forEachIndexed { index, item ->
             val value = item.value
+            val displayed = value ?: item.valueRes?.let { stringResource(it) }
             SegmentedListItem(
                 onClick = { value?.let(onCopy) },
                 enabled = value != null,
@@ -704,9 +734,9 @@ private fun MediaInfoDetailGroup(
                 },
             ) {
                 Text(
-                    text = value ?: unknownText,
+                    text = displayed ?: unknownText,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (value != null) colors.onSurface else colors.onSurfaceVariant,
+                    color = if (displayed != null) colors.onSurface else colors.onSurfaceVariant,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )

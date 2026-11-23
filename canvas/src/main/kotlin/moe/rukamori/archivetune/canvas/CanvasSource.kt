@@ -15,6 +15,7 @@ enum class CanvasSource {
     APPLE_MUSIC,
     TIDAL,
     SPOTIFY,
+    MODULES,
     ALL;
 
     fun accepts(provider: CanvasSource?): Boolean =

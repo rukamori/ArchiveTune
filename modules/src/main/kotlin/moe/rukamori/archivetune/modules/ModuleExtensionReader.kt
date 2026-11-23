@@ -105,7 +105,7 @@ object ModuleExtensionReader {
         }
         if (arch) {
             val declared = metadata.getJSONArray("capabilities")
-            val known = listOf("searchTracks", "getTrackStreamUrl", "getAlbum", "getArtist", "getPlaylist", "onPlaybackError")
+            val known = ModuleCapabilities.known
             val values = (0 until declared.length()).map { declared.get(it) as? String ?: invalid("CAPABILITIES") }
             if (values.size != values.distinct().size || values.any { it !in known } || !values.containsAll(known.take(2))) invalid("CAPABILITIES")
             metadata.put("declaredCapabilities", declared)

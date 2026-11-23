@@ -20,6 +20,17 @@ enum class ModuleLoadStage { DOWNLOAD, DECODE, ENGINE, HOST, PROVIDER, MANIFEST,
 class ModuleException(val failure: ModuleFailure, cause: Throwable? = null, val stage: ModuleLoadStage? = null,
     val diagnosticCode: String? = null) : Exception(failure.name, cause)
 
+object ModuleCapabilities {
+    const val SEARCH = "searchTracks"
+    const val STREAM = "getTrackStreamUrl"
+    const val PLAYBACK_ERROR = "onPlaybackError"
+    const val LYRICS = "getLyrics"
+    const val METADATA = "getTrackMetadata"
+    const val CANVAS = "getCanvas"
+    val known = listOf(SEARCH, STREAM, "getAlbum", "getArtist", "getPlaylist", PLAYBACK_ERROR, LYRICS, METADATA, CANVAS)
+    val content = listOf(LYRICS, METADATA, CANVAS)
+}
+
 enum class ModuleSettingType { TEXT, PASSWORD, NUMBER, BOOLEAN, SELECT, UNSUPPORTED }
 
 data class ModuleOption(val label: String, val valueJson: String, val description: String = "", val kind: String = "")
@@ -58,6 +69,10 @@ data class ModuleManifest(
     val authentication: Boolean = false,
     val appAttestation: Boolean = false,
 ) {
+    val providesAudio: Boolean get() = capabilities.containsAll(listOf(ModuleCapabilities.SEARCH, ModuleCapabilities.STREAM))
+
+    fun provides(capability: String): Boolean = capability in capabilities
+
     companion object {
         fun parse(value: JSONObject): ModuleManifest {
             val schema = value.optJSONObject("settings") ?: JSONObject()
@@ -102,7 +117,10 @@ data class ModuleManifest(
                 value.optBoolean("authentication"),
                 value.optBoolean("appAttestation") || ModuleAppAttestation.FEATURE in requiredFeatures,
             ).also {
-                if (it.id.isBlank() || it.name.isBlank() || !it.capabilities.containsAll(listOf("searchTracks", "getTrackStreamUrl"))) {
+                val audio = it.capabilities.count { capability -> capability == ModuleCapabilities.SEARCH || capability == ModuleCapabilities.STREAM }
+                if (it.id.isBlank() || it.name.isBlank() || audio == 1 ||
+                    (audio == 0 && (it.capabilities.none { capability -> capability in ModuleCapabilities.content } ||
+                        ModuleCapabilities.PLAYBACK_ERROR in it.capabilities))) {
                     throw ModuleException(ModuleFailure.UNSUPPORTED)
                 }
                 if (it.id.length > 256 || it.name.length > 256 || it.version.length > 128 || it.description.length > 8192) throw ModuleException(ModuleFailure.INVALID_DOCUMENT)
@@ -160,6 +178,58 @@ data class ModuleTrack(
     val durationSeconds: Int?,
     val explicit: Boolean?,
     val identifier: String?,
+)
+
+enum class ModuleLyricsFormat(val id: String) {
+    TTML("ttml"), LRC("lrc"), SYLLABLE("syllable"), PLAIN("plain");
+
+    companion object {
+        fun of(value: String): ModuleLyricsFormat? = entries.firstOrNull { it.id == value }
+    }
+}
+
+data class ModuleLyrics(
+    val format: ModuleLyricsFormat,
+    val text: String,
+    val author: String?,
+    val sourceUrl: String?,
+)
+
+data class ModuleTrackDetails(
+    val title: String?,
+    val artists: List<String>,
+    val album: String?,
+    val albumArtist: String?,
+    val releaseDate: String?,
+    val genres: List<String>,
+    val label: String?,
+    val isrc: String?,
+    val upc: String?,
+    val composers: List<String>,
+    val lyricists: List<String>,
+    val producers: List<String>,
+    val copyright: String?,
+    val bpm: Double?,
+    val key: String?,
+    val language: String?,
+    val explicit: Boolean?,
+    val artworkUrl: String?,
+    val url: String?,
+    val description: String?,
+) {
+    val isEmpty: Boolean get() = listOf(title, album, albumArtist, releaseDate, label, isrc, upc, copyright, key, language, artworkUrl, url, description)
+        .all { it == null } && artists.isEmpty() && genres.isEmpty() && composers.isEmpty() && lyricists.isEmpty() &&
+        producers.isEmpty() && bpm == null && explicit == null
+}
+
+data class ModuleCanvas(
+    val title: String?,
+    val artist: String?,
+    val videoUrl: String?,
+    val videoUrlVertical: String?,
+    val animated: String?,
+    val animatedVertical: String?,
+    val staticImage: String?,
 )
 
 data class ModuleSongArtist(val name: String, val id: String?)

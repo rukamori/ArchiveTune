@@ -683,7 +683,7 @@
     <string name="canvas_spotify">Spotify</string>
     <string name="canvas_spotify_desc">Menggunakan akun Spotify yang terhubung</string>
     <string name="canvas_source_all">Semua</string>
-    <string name="canvas_source_all_desc">Coba BetterLyrics, Apple Music, TIDAL, lalu Spotify</string>
+    <string name="canvas_source_all_desc">Coba modul, BetterLyrics, Apple Music, TIDAL, lalu Spotify</string>
     <string name="canvas_wifi_only">Gunakan Wi-Fi saja</string>
     <string name="canvas_wifi_only_desc">Matikan untuk mengizinkan data seluler. Kanvas yang diunduh tetap tersedia secara offline.</string>
     <string name="canvas_provider_health">Kesehatan penyedia</string>

@@ -89,6 +89,7 @@ class CanvasSettingsUseCases @Inject constructor(
         appleMusic = healthAvailability(policy, CanvasSource.APPLE_MUSIC),
         tidal = healthAvailability(policy, CanvasSource.TIDAL),
         spotify = healthAvailability(policy, CanvasSource.SPOTIFY, spotifyConnected),
+        modules = healthAvailability(policy, CanvasSource.MODULES),
     )
 
     suspend fun checkHealth(policy: CanvasPolicy, spotifyConnected: Boolean): CanvasHealthStatus = coroutineScope {
@@ -96,7 +97,8 @@ class CanvasSettingsUseCases @Inject constructor(
         val appleMusic = async { checkProvider(policy, CanvasSource.APPLE_MUSIC) }
         val tidal = async { checkProvider(policy, CanvasSource.TIDAL) }
         val spotify = async { checkProvider(policy, CanvasSource.SPOTIFY, spotifyConnected) }
-        CanvasHealthStatus(betterLyrics.await(), appleMusic.await(), tidal.await(), spotify.await())
+        val modules = async { checkProvider(policy, CanvasSource.MODULES) }
+        CanvasHealthStatus(betterLyrics.await(), appleMusic.await(), tidal.await(), spotify.await(), modules.await())
     }
 
     private suspend fun checkProvider(policy: CanvasPolicy, source: CanvasSource, spotifyConnected: Boolean = true): CanvasHealth {

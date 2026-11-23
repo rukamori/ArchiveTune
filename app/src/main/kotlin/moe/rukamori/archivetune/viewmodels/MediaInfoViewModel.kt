@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.common.collect.ImmutableList
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.text.NumberFormat
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -25,6 +26,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.mediainfo.MediaInfoData
 import moe.rukamori.archivetune.mediainfo.MediaInfoDetail
 import moe.rukamori.archivetune.mediainfo.MediaInfoEvent
+import moe.rukamori.archivetune.mediainfo.MediaInfoModuleDetails
 import moe.rukamori.archivetune.mediainfo.MediaInfoNumbers
 import moe.rukamori.archivetune.mediainfo.MediaInfoQuickFact
 import moe.rukamori.archivetune.mediainfo.MediaInfoState
@@ -32,6 +34,8 @@ import moe.rukamori.archivetune.mediainfo.MediaInfoTab
 import moe.rukamori.archivetune.mediainfo.MediaInfoUiModel
 import moe.rukamori.archivetune.mediainfo.ObserveMediaInfoUseCase
 import moe.rukamori.archivetune.mediainfo.asMediaInfoError
+import moe.rukamori.archivetune.modules.ModuleTrackDetails
+import moe.rukamori.archivetune.modules.displayLabel
 import moe.rukamori.archivetune.ui.utils.formatFileSize
 import moe.rukamori.archivetune.ui.utils.numberFormatter
 
@@ -161,6 +165,14 @@ class MediaInfoViewModel @Inject constructor(
                 is MediaInfoState.Error -> data.metadata
             },
             technicalDetails = technicalState,
+            moduleDetails = when (val module = data.module) {
+                is MediaInfoState.Success -> MediaInfoState.Success(
+                    MediaInfoModuleDetails(module.data.module.displayLabel, ImmutableList.copyOf(moduleDetails(module.data.details))),
+                )
+                MediaInfoState.Loading -> MediaInfoState.Loading
+                MediaInfoState.Empty -> MediaInfoState.Empty
+                is MediaInfoState.Error -> module
+            },
             statistics = data.statistics,
             overview = ImmutableList.of(
                 MediaInfoDetail(R.string.song_title, local?.title ?: metadata?.title),
@@ -176,6 +188,39 @@ class MediaInfoViewModel @Inject constructor(
                 likeRatio = likeRatio(statistics?.likes, statistics?.dislikes),
             ),
         )
+    }
+
+    private fun moduleDetails(details: ModuleTrackDetails): List<MediaInfoDetail> = buildList {
+        fun text(labelRes: Int, value: String?) {
+            value?.let { add(MediaInfoDetail(labelRes, it)) }
+        }
+        fun list(labelRes: Int, values: List<String>) {
+            values.takeIf { it.isNotEmpty() }?.let { add(MediaInfoDetail(labelRes, it.joinToString())) }
+        }
+        text(R.string.song_title, details.title)
+        list(R.string.song_artists, details.artists)
+        text(R.string.modules_field_album, details.album)
+        text(R.string.modules_field_album_artist, details.albumArtist)
+        text(R.string.modules_field_release_date, details.releaseDate)
+        list(R.string.modules_field_genres, details.genres)
+        text(R.string.modules_field_label, details.label)
+        list(R.string.modules_field_composers, details.composers)
+        list(R.string.modules_field_lyricists, details.lyricists)
+        list(R.string.modules_field_producers, details.producers)
+        details.bpm?.let {
+            add(MediaInfoDetail(R.string.modules_field_bpm, NumberFormat.getNumberInstance().apply { maximumFractionDigits = 1 }.format(it)))
+        }
+        text(R.string.modules_field_key, details.key)
+        text(R.string.modules_field_language, details.language)
+        details.explicit?.let {
+            add(MediaInfoDetail(R.string.modules_field_content_rating, null, if (it) R.string.modules_field_explicit else R.string.modules_field_clean))
+        }
+        text(R.string.modules_field_isrc, details.isrc)
+        text(R.string.modules_field_upc, details.upc)
+        text(R.string.modules_field_copyright, details.copyright)
+        text(R.string.description, details.description)
+        text(R.string.modules_field_artwork, details.artworkUrl)
+        text(R.string.modules_field_link, details.url)
     }
 
     private fun likeRatio(likes: Int?, dislikes: Int?): Float? {

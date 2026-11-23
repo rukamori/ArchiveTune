@@ -95,6 +95,10 @@ val InstalledModule.displayLabel: String get() = metadata?.name ?: manifest.disp
 
 val InstalledModule.displayAuthor: String get() = metadata?.author ?: manifest.author
 
+val InstalledModule.resolvesAudio: Boolean get() = enabled && manifest.providesAudio
+
+internal val InstalledModule.engineId: String get() = "$id:$revision"
+
 private val ModuleDiagnosticLabelPattern = Regex("[\\p{L}\\p{N} _().+/-]*")
 
 fun moduleDiagnosticLabel(value: String): String = value.takeIf { it.length <= 96 && it.matches(ModuleDiagnosticLabelPattern) }.orEmpty()
@@ -137,12 +141,12 @@ class ResolveModuleAudioUseCase @Inject constructor(
     private val cache = java.util.concurrent.ConcurrentHashMap<String, Entry>()
     private val exclusions = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
-    fun enabled(): Boolean = repository.state.value?.let { it.enabled && it.modules.any { module -> module.enabled } } == true
+    fun enabled(): Boolean = repository.state.value?.let { it.enabled && it.modules.any(InstalledModule::resolvesAudio) } == true
 
     fun peek(id: String, metadata: ModuleMatchMetadata?): ModuleAudioSelection? {
         val registry = repository.state.value ?: return null
         if (!registry.enabled) return null
-        for (module in registry.modules.filter { it.enabled }) {
+        for (module in registry.modules.filter(InstalledModule::resolvesAudio)) {
             if (excluded(id, module.id)) continue
             val entry = cache[cacheId(id, module.id)]?.takeIf {
                 it.moduleRevision == module.revision && (metadata == null || it.metadata == metadata) && it.expiresAtMs > System.currentTimeMillis()
@@ -159,13 +163,13 @@ class ResolveModuleAudioUseCase @Inject constructor(
             diagnostics.record("registry", ModuleDiagnostic(ModuleCheckStatus.FAILED, System.currentTimeMillis(), 0, ModuleFailure.INVALID_CONFIGURATION))
             return null
         }
-        if (!registry.enabled || registry.modules.none { it.enabled } || id.isLocalMediaId()) return null
+        if (!registry.enabled || registry.modules.none(InstalledModule::resolvesAudio) || id.isLocalMediaId()) return null
         val target = metadata ?: metadataRepository.get(id) ?: return null
         if (!target.eligible || target.title.isBlank() || target.artists.none(String::isNotBlank)) return null
         return withTimeoutOrNull(30_000) {
             mutex.withLock {
                 try {
-                for (module in registry.modules.filter { it.enabled }) {
+                for (module in registry.modules.filter(InstalledModule::resolvesAudio)) {
                     if (!stillCurrent(registry, module)) return@withTimeoutOrNull null
                     if (excluded(id, module.id)) continue
                     val key = cacheId(id, module.id)
@@ -306,7 +310,7 @@ class ResolveModuleAudioUseCase @Inject constructor(
     }
 
     private fun currentModule(selection: ModuleAudioSelection): InstalledModule? =
-        repository.state.value?.modules?.firstOrNull { it.id == selection.module.id && it.revision == selection.module.revision && it.enabled }
+        repository.state.value?.modules?.firstOrNull { it.id == selection.module.id && it.revision == selection.module.revision && it.resolvesAudio }
 
     private fun playbackDiagnostic(module: InstalledModule, failure: ModulePlaybackFailure, started: Long, outcome: String, detail: String = "") =
         ModuleDiagnostic(when (failure.category) {
@@ -335,14 +339,14 @@ class ResolveModuleAudioUseCase @Inject constructor(
         cache.entries.removeIf { it.value.selection == null && it.value.moduleId == moduleId }
     }
 
-    private fun engineId(module: InstalledModule) = "${module.id}:${module.revision}"
+    private fun engineId(module: InstalledModule) = module.engineId
     private companion object { const val EXCLUSION_MS = 10 * 60_000L }
     private fun cacheId(id: String, moduleId: String) = "${id.length}:$id$moduleId"
 
     private fun stillCurrent(expected: ModuleRegistry, module: InstalledModule): Boolean {
         val current = repository.state.value ?: return false
         if (!current.enabled) return false
-        val preceding = expected.modules.filter { it.enabled }.takeWhile { it.id != module.id } + module
-        return current.modules.filter { it.enabled }.take(preceding.size).map { it.id to it.revision } == preceding.map { it.id to it.revision }
+        val preceding = expected.modules.filter(InstalledModule::resolvesAudio).takeWhile { it.id != module.id } + module
+        return current.modules.filter(InstalledModule::resolvesAudio).take(preceding.size).map { it.id to it.revision } == preceding.map { it.id to it.revision }
     }
 }

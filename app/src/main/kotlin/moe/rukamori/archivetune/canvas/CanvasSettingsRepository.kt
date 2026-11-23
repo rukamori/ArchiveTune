@@ -27,6 +27,8 @@ import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.CanvasWifiOnlyKey
 import moe.rukamori.archivetune.constants.LowDataModeKey
 import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
+import moe.rukamori.archivetune.modules.ModuleCapabilities
+import moe.rukamori.archivetune.modules.ModuleContentRepository
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.utils.dataStore
 import java.io.IOException
@@ -37,6 +39,7 @@ import javax.inject.Singleton
 class CanvasSettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val spotifyCanvas: SpotifyCanvasRepository,
+    private val moduleContent: ModuleContentRepository,
 ) {
     private val connectivityManager = context.getSystemService<ConnectivityManager>()
 
@@ -123,6 +126,7 @@ class CanvasSettingsRepository @Inject constructor(
             CanvasSource.APPLE_MUSIC -> AppleMusicProvider.isHealthy()
             CanvasSource.TIDAL -> TidalCanvasProvider.isHealthy()
             CanvasSource.SPOTIFY -> spotifyCanvas.isHealthy()
+            CanvasSource.MODULES -> moduleContent.available(ModuleCapabilities.CANVAS)
             CanvasSource.ALL -> error("Health checks require one provider")
         }
     }

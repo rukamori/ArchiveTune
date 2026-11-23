@@ -539,6 +539,9 @@ class ModuleSettingsViewModel @Inject constructor(private val useCases: ModuleSe
                 "getArtist" -> R.string.modules_capability_artist
                 "getPlaylist" -> R.string.modules_capability_playlist
                 "onPlaybackError" -> R.string.modules_capability_playback_errors
+                "getLyrics" -> R.string.modules_capability_lyrics
+                "getTrackMetadata" -> R.string.modules_capability_metadata
+                "getCanvas" -> R.string.modules_capability_canvas
                 else -> null
             }
         })

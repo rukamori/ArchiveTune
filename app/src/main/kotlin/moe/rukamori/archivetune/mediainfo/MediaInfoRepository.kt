@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.mediainfo
 
+import java.io.IOException
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -15,8 +16,16 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.modules.ModuleCapabilities
+import moe.rukamori.archivetune.modules.ModuleContentRepository
+import moe.rukamori.archivetune.modules.ModuleException
+import moe.rukamori.archivetune.modules.ModuleFailure
+import moe.rukamori.archivetune.modules.ModuleTrackDetailsResult
 
-class MediaInfoRepository @Inject constructor(private val database: MusicDatabase) {
+class MediaInfoRepository @Inject constructor(
+    private val database: MusicDatabase,
+    private val moduleContent: ModuleContentRepository,
+) {
     fun observeLocal(videoId: String): Flow<LocalMediaInfo> =
         combine(database.song(videoId), database.format(videoId)) { song, format ->
             LocalMediaInfo(
@@ -47,6 +56,21 @@ class MediaInfoRepository @Inject constructor(private val database: MusicDatabas
             description = info.description?.takeIf(String::isNotBlank),
             subscribers = info.subscribers,
         )
+    }
+
+    suspend fun hasModuleMetadata(): Boolean = moduleContent.providers(ModuleCapabilities.METADATA).isNotEmpty()
+
+    suspend fun moduleMetadata(videoId: String, local: LocalMediaInfo?): ModuleTrackDetailsResult? = withContext(Dispatchers.IO) {
+        val song = moduleContent.song(videoId, local?.title.orEmpty(), listOfNotNull(local?.artists), album = null, durationSeconds = 0)
+            ?: return@withContext null
+        try {
+            moduleContent.metadata(song)
+        } catch (error: ModuleException) {
+            if (error.failure == ModuleFailure.NETWORK || error.failure == ModuleFailure.TIMEOUT) {
+                throw IOException("Module metadata is temporarily unavailable", error)
+            }
+            throw error
+        }
     }
 
     suspend fun statistics(videoId: String): MediaInfoStatistics = withContext(Dispatchers.IO) {

@@ -919,7 +919,7 @@
     <string name="canvas_spotify">スポティファイ</string>
     <string name="canvas_spotify_desc">接続されている Spotify アカウントを使用します</string>
     <string name="canvas_source_all">すべて</string>
-    <string name="canvas_source_all_desc">BetterLyrics、Apple Music、TIDAL、次に Spotify を試してください</string>
+    <string name="canvas_source_all_desc">モジュール、BetterLyrics、Apple Music、TIDAL、次に Spotify を試してください</string>
     <string name="canvas_wifi_only">Wi-Fiのみを使用する</string>
     <string name="canvas_wifi_only_desc">モバイルデータを許可するにはオフにします。ダウンロードしたキャンバスはオフラインでも利用できます。</string>
     <string name="canvas_provider_health">プロバイダーの健康状態</string>

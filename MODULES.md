@@ -5,9 +5,10 @@ It applies to ArchiveTune builds containing `ModulePackageReader`, older release
 do not acquire ZIP package support by renaming a file. The package and API version
 numbers are independent of your provider's own version.
 
-A module supplies alternative audio for an existing song. ArchiveTune keeps the
-song's identity, displayed metadata, library entry, and queue position. Modules
-do not add a source picker, music search destination, or browsing screen.
+A module supplies alternative audio, lyrics, track details, or canvas video for an
+existing song. ArchiveTune keeps the song's identity, displayed metadata, library
+entry, and queue position. Modules do not add a source picker, music search
+destination, or browsing screen.
 
 No provider, account, endpoint, or catalog is bundled by this specification. You
 must implement the integration with your chosen audio source. This guide does
@@ -22,6 +23,7 @@ not provide an audio service or a working lossless provider.
 - [Track search](#track-search)
 - [Stream resolution and lossless audio](#stream-resolution-and-lossless-audio)
 - [Playback error handling](#playback-error-handling)
+- [Lyrics, track details, and canvas](#lyrics-track-details-and-canvas)
 - [Host APIs and limits](#host-apis-and-limits)
 - [App attestation](#app-attestation)
 - [Package and install](#package-and-install)
@@ -130,7 +132,7 @@ the credential setting when your service does not need one.
 | `module.author` | Optional string. |
 | `module.description` | Optional string, at most 8,192 characters. |
 | `module.labels` | Optional array of strings. Informational provider declarations, not verification of an active stream. `tags` is also accepted and merged with labels. |
-| `module.capabilities` | Required array of unique supported method names. Must include `searchTracks` and `getTrackStreamUrl` and exactly match the known methods actually exported by the script. |
+| `module.capabilities` | Required array of unique supported method names that exactly matches the known methods exported by the script. Declare `searchTracks` and `getTrackStreamUrl` together for audio. A module without them must declare at least one of `getLyrics`, `getTrackMetadata`, or `getCanvas`, and cannot declare `onPlaybackError`. |
 | `module.settings` | Optional object mapping setting keys to field declarations, or an array of declarations with unique string `key` values. |
 | `module.displayName` | Optional user-facing name, at most 256 characters. Used in installed rows, details, and installation review, the stable `id` is unchanged. Local name edits take precedence. |
 | `module.homepage` / `module.repository` | Optional absolute HTTP(S) project/source URLs, at most 2,048 characters. Displayed as links in review/details. |
@@ -170,9 +172,12 @@ need conversion to `.arch`. See [Extension compatibility](#extension-compatibili
 for package, authentication, and transfer behavior.
 
 Supported capability names are `searchTracks`, `getTrackStreamUrl`, `getAlbum`,
-`getArtist`, `getPlaylist`, and `onPlaybackError`. The first two are called by
-automatic audio resolution, and `onPlaybackError` is called when your stream fails
-during playback, see [Playback error handling](#playback-error-handling).
+`getArtist`, `getPlaylist`, `onPlaybackError`, `getLyrics`, `getTrackMetadata`, and
+`getCanvas`. The first two are called by automatic audio resolution, and
+`onPlaybackError` is called when your stream fails during playback, see
+[Playback error handling](#playback-error-handling). The last three supply
+content for the song being played, see
+[Lyrics, track details, and canvas](#lyrics-track-details-and-canvas).
 Optional album/artist/playlist capabilities are informational in the current
 application, declaring them does not create browsing UI.
 
@@ -477,6 +482,116 @@ On the retry, `getTrackStreamUrl(trackId, quality, context)` sees
 `context.playbackError` and can choose a different source. Extension-runtime
 modules register `onPlaybackError(error, context)` with `registerExtension`, and
 receive the same object in `download`'s `options.playbackError`.
+
+## Lyrics, track details, and canvas
+
+A module can supply lyrics, track details, and canvas video in addition to audio,
+or instead of it. Export the method and declare it in `module.capabilities`. A
+module without `searchTracks` and `getTrackStreamUrl` is never asked for audio and
+is not listed among the consulted sources when playback fails. Older ArchiveTune
+builds reject the unknown capability names during installation.
+
+These methods run only while **Use modules** and your module are enabled. They
+receive `(song, context)`. `song` is the [song context](#song-context) object, and
+`context` carries the same `settings` and `song` fields as audio resolution. They
+can run for any song with a title and artist, including local files, so the song's
+title, artists, and album are sent to your service. When the user edits the title
+or artist in the lyrics search screen, `song.title`, `song.artists`, and
+`song.query` carry the edited values.
+
+Return `null` when you have nothing for the song. Throw on transport,
+authentication, or parsing failures. A network failure or timeout is treated as
+temporarily unavailable, not as a confirmed absence.
+
+### Lyrics
+
+Signature: `getLyrics(song, context)`. Return one object, or an array of up to 8
+alternatives:
+
+| Field | Meaning |
+| --- | --- |
+| `format` | Required. `ttml`, `lrc`, `syllable`, or `plain`. |
+| `lyrics` | Required text, at most 1 MiB of UTF-8. `text` is accepted as an alias. |
+| `author` | Optional credit for the lyrics, at most 256 characters. |
+| `sourceUrl` | Optional HTTP(S) page for the lyrics. |
+
+ArchiveTune checks that the text matches the declared format, and rejects the
+result with `LYRICS_FORMAT_MISMATCH` when it does not:
+
+- `ttml`: a TTML document with a root `<tt>` element in the
+  `http://www.w3.org/ns/ttml` namespace. Time lines with `begin` and `end` on `<p>`,
+  and words or syllables with `begin` and `end` on `<span>`.
+- `lrc`: line-synchronized LRC, one `[mm:ss.xx]` tag per line.
+- `syllable`: enhanced LRC. Each line has a `[mm:ss.xx]` tag, and each word or
+  syllable is preceded by a `<mm:ss.xx>` tag giving its start time.
+- `plain`: unsynchronized text without timestamps or markup.
+
+```text
+[00:12.00]<00:12.00>Hel<00:12.40>lo <00:12.80>world
+```
+
+```xml
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body><div>
+    <p begin="12.0s" end="14.0s"><span begin="12.0s" end="12.8s">Hello</span> <span begin="12.8s" end="14.0s">world</span></p>
+  </div></body>
+</tt>
+```
+
+Enabled lyrics modules are asked before the built-in lyrics providers, in module
+priority order, and each call is limited to 8 seconds. ArchiveTune keeps its usual
+selection: word-synchronized lyrics are preferred over line-synchronized lyrics,
+which are preferred over plain text, and earlier providers win ties. Lyrics are
+credited to your module's name, followed by `author` when supplied. Every returned
+alternative is offered when the user searches for other lyrics. Changing the
+module's configuration invalidates its cached results.
+
+### Track details
+
+Signature: `getTrackMetadata(song, context)`. Return an object with any of these
+fields. They are shown in the song's media information sheet, under **Details**,
+credited to your module. They do not change the library entry.
+
+| Field | Type |
+| --- | --- |
+| `title`, `album`, `albumArtist`, `label`, `copyright`, `key`, `language` | String |
+| `releaseDate` | String as you want it displayed, at most 64 characters |
+| `artists`, `genres`, `composers`, `lyricists`, `producers` | String or array of up to 32 strings |
+| `isrc`, `upc` | String, at most 32 characters |
+| `bpm` | Number greater than 0 and below 1000 |
+| `explicit` | Boolean |
+| `artworkUrl` | HTTPS URL |
+| `url` | HTTP(S) URL for the track on your service |
+| `description` | String, at most 8,192 characters |
+
+Strings are limited to 2,048 characters unless stated otherwise. Unknown fields
+are ignored and invalid types fail the call. Enabled modules are asked in priority
+order and the first non-empty result is shown. The call is limited to 15 seconds.
+
+### Canvas
+
+Signature: `getCanvas(song, context)`. Return a looping video for the player
+background:
+
+| Field | Meaning |
+| --- | --- |
+| `videoUrl` / `videoUrlVertical` | HTTPS progressive video, such as MP4. Downloaded into the canvas cache. |
+| `animated` / `animatedVertical` | HTTPS video or HLS playlist used when no progressive URL is given. |
+| `staticImage` | Optional HTTPS still image. |
+| `title` / `artist` | The track the canvas belongs to. Defaults to the requested song. |
+
+At least one video URL is required. The regular player uses `videoUrl` or
+`animated`, and the vertical full-screen player uses `videoUrlVertical` or
+`animatedVertical`, so a canvas without the matching orientation is skipped there.
+Canvas requests carry no custom headers or
+cookies, so URLs must be directly accessible. ArchiveTune rejects a canvas whose
+`title` and primary `artist` do not match the requested song. With the extension
+runtime, every URL must be allowed by `permissions.network`.
+
+Select **Modules**, or **All**, as the canvas source in canvas settings. **All**
+tries modules first. Canvas settings, Wi-Fi only, low-data mode, and cache limits
+apply to module canvases as they do to the built-in sources. Each module call is
+limited to 20 seconds.
 
 ## Host APIs and limits
 
@@ -871,6 +986,9 @@ and redacted codes, arbitrary provider exception messages are not displayed.
 
 | Code / outcome | What to inspect |
 | --- | --- |
+| `INVALID_LYRICS_RESULT`, `INVALID_LYRICS_FORMAT`, `LYRICS_FORMAT_MISMATCH` | Return lyrics objects with a supported `format` and text that matches it. |
+| `INVALID_METADATA_RESULT`, `INVALID_CANVAS_RESULT`, `INVALID_CONTENT_FIELD`, `INVALID_CONTENT_URL` | Check field types, length limits, and that canvas and artwork URLs use HTTPS. |
+| `CONTENT_TIMEOUT` | Return lyrics within 8 seconds, track details within 15, and canvas within 20. |
 | `ARCH_ZIP`, `ARCH_ENTRY`, missing-file errors | ZIP format, compression, exact root filenames, duplicates, extra files, encryption, or damaged entries. |
 | `ARCH_SIZE` or invalid-document size errors | Compressed package, uncompressed entries, and normalized source limits. |
 | `ARCH_UTF8` | Encode both files as UTF-8. |
@@ -965,6 +1083,7 @@ ArchiveTune even when the extension runtime is selected.
 | `initialize(settings)` | Receives flat, typed setting values. Initialization runs when that engine's configuration changes, a returned `false` fails the operation. |
 | `searchTracks(query, limit, options)` | `options.song` is the [song context](#song-context). Results are mapped from extension fields such as `name`, `artists`, `album_name`, and `duration_ms` before the existing recording matcher runs. |
 | `onPlaybackError(error, context)` | Optional. Same contract as [Playback error handling](#playback-error-handling). `context.song` and `context.track` are supplied, settings arrive through `initialize`. |
+| `getLyrics`, `getTrackMetadata`, `getCanvas` `(song, options)` | Optional. Same results as [Lyrics, track details, and canvas](#lyrics-track-details-and-canvas). `options.song` is the song context, settings arrive through `initialize`. The extension runtime still requires its audio methods. |
 | `download(id, quality, outputPath, onProgress, options)` | `options.song` is the [song context](#song-context). `options.playbackError` is set when the host retries after `onPlaybackError` returned `retry`. Runs in transfer-resolution mode. The host captures the first file-transfer request and stops the extension's download pipeline there. No successful file download or local output path is fabricated. |
 | `http.get/head/delete(url, headers)` | Synchronous, cancellable HTTP with status, body, final URL, headers, and permission checks. Nested `headers`/`params` options are accepted for GET helpers. |
 | `http.post/put/patch(url, body, headers)` | String bodies are preserved, object bodies are JSON encoded. Content type defaults to JSON when a body is present. |
@@ -1045,6 +1164,8 @@ target app/device before publishing compatibility claims.
 - Verify the actual returned encoding at every declared quality, a tag alone is
   not a quality check.
 - Check that changing YouTube quality does not change your module's request.
+- If you supply lyrics, check each declared format in the lyrics view, including
+  word timing for `ttml` and `syllable`.
 - If you use app attestation, confirm that your server rejects a debug build, a
   build signed with another key, and a replayed nonce or request signature.
 - If you export `onPlaybackError`, check each action against a real failing
