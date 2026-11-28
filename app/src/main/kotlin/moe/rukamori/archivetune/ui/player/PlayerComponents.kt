@@ -2671,7 +2671,11 @@ private fun V8Artwork(
         modifier =
             Modifier
                 .size(size)
-                .clip(RoundedCornerShape(8.dp))
+                .lyricsArtworkMorphSource(
+                    morph = LocalLyricsArtworkMorph.current,
+                    cornerRadius = 8.dp,
+                    imageUrl = artworkUrl,
+                ).clip(RoundedCornerShape(8.dp))
                 .background(Color.White.copy(alpha = 0.08f)),
     ) {
         AsyncImage(
@@ -3725,7 +3729,11 @@ private fun V9Artwork(
         modifier =
             modifier
                 .then(baseModifier)
-                .clip(RoundedCornerShape(36.dp))
+                .lyricsArtworkMorphSource(
+                    morph = LocalLyricsArtworkMorph.current,
+                    cornerRadius = 36.dp,
+                    imageUrl = artworkUrl,
+                ).clip(RoundedCornerShape(36.dp))
                 .background(placeholderColor),
     ) {
         AsyncImage(
@@ -5058,6 +5066,11 @@ private fun EditorialDieCutArt(
                     scaleX = artScale
                     scaleY = artScale
                 }
+                .lyricsArtworkMorphSource(
+                    morph = LocalLyricsArtworkMorph.current,
+                    cornerRadius = artSize / 2,
+                    imageUrl = artworkUrl,
+                )
                 .clip(dieCutShape)
                 .background(accent),
             contentAlignment = Alignment.Center

@@ -158,6 +158,7 @@ fun Thumbnail(
     val (backdropBlurAmount) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
+    val lyricsArtworkMorph = LocalLyricsArtworkMorph.current
 
     // Player background style for consistent theming
     val playerBackground by rememberEnumPreference(
@@ -474,61 +475,73 @@ fun Thumbnail(
                                     val thumbnailArtworkRequest = rememberOfflineArtworkImageRequest(displayUrl)
                                     val thumbnailBgBlurEnabled = backdropEnabled && backdropBlurAmount > 0
 
-                                    if (thumbnailBgBlurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                        val blurRadiusPx = (backdropBlurAmount * 60 / 100f).coerceAtMost(60f)
-                                        AsyncImage(
-                                            model = thumbnailBgRequest,
-                                            contentDescription = null,
-                                            contentScale = ContentScale.FillBounds,
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxSize()
-                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
-                                                    .graphicsLayer(
-                                                        renderEffect = BlurEffect(radiusX = blurRadiusPx, radiusY = blurRadiusPx),
-                                                        alpha = 0.6f,
-                                                    ),
-                                        )
-                                    } else if (thumbnailBgBlurEnabled) {
-                                        ThumbnailBgBlurApi30(
-                                            imageUrl = displayUrl,
-                                            blurAmount = backdropBlurAmount,
-                                            shouldCropArtwork = shouldCropArtwork,
-                                        )
-                                    } else {
-                                        AsyncImage(
-                                            model = thumbnailBgRequest,
-                                            contentDescription = null,
-                                            contentScale = ContentScale.FillBounds,
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxSize()
-                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
-                                                    .graphicsLayer(alpha = 0.6f),
-                                        )
-                                    }
-
-                                    AsyncImage(
-                                        model = thumbnailArtworkRequest,
-                                        contentDescription = null,
-                                        contentScale = if (shouldCropArtwork) ContentScale.Crop else ContentScale.Fit,
+                                    Box(
                                         modifier =
                                             Modifier
                                                 .fillMaxSize()
-                                                .let { if (shouldCropArtwork) it.aspectRatio(1f) else it },
-                                    )
-
-                                    if (shouldUseCanvas &&
-                                        (!primaryCanvasUrl.isNullOrBlank() || !fallbackCanvasUrl.isNullOrBlank())
+                                                .lyricsArtworkMorphSource(
+                                                    morph = lyricsArtworkMorph,
+                                                    cornerRadius = thumbnailCornerRadius.dp,
+                                                    imageModel = displayUrl,
+                                                    enabled = shouldUseCanvas,
+                                                ),
                                     ) {
-                                        CanvasArtworkPlayer(
-                                            source = canvasArtwork?.source,
-                                            primaryUrl = primaryCanvasUrl,
-                                            fallbackUrl = fallbackCanvasUrl,
-                                            isPlaying = isPlaying,
-                                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                                            modifier = Modifier.fillMaxSize(),
+                                        if (thumbnailBgBlurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                            val blurRadiusPx = (backdropBlurAmount * 60 / 100f).coerceAtMost(60f)
+                                            AsyncImage(
+                                                model = thumbnailBgRequest,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.FillBounds,
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxSize()
+                                                        .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
+                                                        .graphicsLayer(
+                                                            renderEffect = BlurEffect(radiusX = blurRadiusPx, radiusY = blurRadiusPx),
+                                                            alpha = 0.6f,
+                                                        ),
+                                            )
+                                        } else if (thumbnailBgBlurEnabled) {
+                                            ThumbnailBgBlurApi30(
+                                                imageUrl = displayUrl,
+                                                blurAmount = backdropBlurAmount,
+                                                shouldCropArtwork = shouldCropArtwork,
+                                            )
+                                        } else {
+                                            AsyncImage(
+                                                model = thumbnailBgRequest,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.FillBounds,
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxSize()
+                                                        .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
+                                                        .graphicsLayer(alpha = 0.6f),
+                                            )
+                                        }
+
+                                        AsyncImage(
+                                            model = thumbnailArtworkRequest,
+                                            contentDescription = null,
+                                            contentScale = if (shouldCropArtwork) ContentScale.Crop else ContentScale.Fit,
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it },
                                         )
+
+                                        if (shouldUseCanvas &&
+                                            (!primaryCanvasUrl.isNullOrBlank() || !fallbackCanvasUrl.isNullOrBlank())
+                                        ) {
+                                            CanvasArtworkPlayer(
+                                                source = canvasArtwork?.source,
+                                                primaryUrl = primaryCanvasUrl,
+                                                fallbackUrl = fallbackCanvasUrl,
+                                                isPlaying = isPlaying,
+                                                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                        }
                                     }
                                 }
                             }

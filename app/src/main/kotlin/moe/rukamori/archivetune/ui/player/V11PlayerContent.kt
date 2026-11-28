@@ -529,6 +529,7 @@ private fun V11ArtworkStage(
     val pauseLabel = stringResource(R.string.player_pause)
     val playStateLabel = stringResource(if (isPlaying) R.string.player_state_playing else R.string.player_state_paused)
     val ambientShape = MaterialShapes.Cookie12Sided.toShape()
+    val lyricsArtworkMorph = LocalLyricsArtworkMorph.current
 
     Box(contentAlignment = Alignment.Center) {
         Box(
@@ -573,10 +574,15 @@ private fun V11ArtworkStage(
                             rotationZ = if (animationsDisabled) 0f else drag / artSize.toPx() * 10f
                             scaleX = cardScale
                             scaleY = cardScale
-                            shadowElevation = 20.dp.toPx()
+                            shadowElevation = if (lyricsArtworkMorph?.isFlightActive == true) 0f else 20.dp.toPx()
                             this.shape = shape
                             clip = true
-                        }.background(palette.onField.copy(alpha = 0.12f))
+                        }.lyricsArtworkMorphSource(
+                            morph = lyricsArtworkMorph,
+                            cornerRadius = cardCorner,
+                            imageUrl = shown.artworkUrl,
+                            enabled = shown.key.id == frame.key.id,
+                        ).background(palette.onField.copy(alpha = 0.12f))
                         .pointerInput(isRtl) {
                             val tracker = VelocityTracker()
                             val nextSign = if (isRtl) 1f else -1f

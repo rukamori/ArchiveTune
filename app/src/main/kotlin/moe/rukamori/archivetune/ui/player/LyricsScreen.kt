@@ -195,6 +195,19 @@ private val AppleMusicTrackHeight = 6.dp
 private val AppleMusicActiveTrackHeight = 12.dp
 private val EnhancedLyricsHorizontalPadding = 8.dp
 private val V2LyricsHorizontalPadding = 24.dp
+private const val BACKGROUND_STAGE_START = 0f
+private const val BACKGROUND_STAGE_END = 0.55f
+private const val HEADER_STAGE_START = 0.3f
+private const val HEADER_STAGE_END = 1f
+private const val LYRICS_STAGE_START = 0.22f
+private const val LYRICS_STAGE_END = 1f
+private const val LYRICS_STAGE_SCALE_FROM = 0.96f
+private const val CONTROLS_STAGE_START = 0.4f
+private const val CONTROLS_STAGE_END = 1f
+private val LyricsStageTravel = 56.dp
+private val ControlsStageTravel = 40.dp
+private val HeaderTextStageTravel = 14.dp
+private val HeaderArtworkCornerRadius = 7.dp
 
 @Suppress("UNUSED_PARAMETER")
 @Composable
@@ -207,6 +220,7 @@ fun LyricsScreen(
     onQueueClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     backHandlerEnabled: Boolean = true,
+    transitionProgress: () -> Float = { 1f },
     lyricsRenderViewModel: LyricsRenderViewModel = hiltViewModel(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -494,7 +508,11 @@ fun LyricsScreen(
             playerCustomBlur = playerCustomBlur,
             playerCustomContrast = playerCustomContrast,
             playerCustomBrightness = playerCustomBrightness,
-            modifier = Modifier.hazeSource(lyricsBackdropHazeState),
+            modifier =
+                Modifier
+                    .graphicsLayer {
+                        alpha = lyricsStagedProgress(transitionProgress(), BACKGROUND_STAGE_START, BACKGROUND_STAGE_END)
+                    }.hazeSource(lyricsBackdropHazeState),
         )
 
         Box(
@@ -513,11 +531,16 @@ fun LyricsScreen(
             AppleMusicGrabber(
                 foregroundColor = foregroundColor,
                 onClick = onBackClick,
+                modifier =
+                    Modifier.graphicsLayer {
+                        alpha = lyricsStagedProgress(transitionProgress(), HEADER_STAGE_START, HEADER_STAGE_END)
+                    },
             )
             AppleMusicTrackHeader(
                 mediaMetadata = mediaMetadata,
                 foregroundColor = foregroundColor,
                 onMoreClick = showLyricsMenu,
+                transitionProgress = transitionProgress,
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -544,7 +567,8 @@ fun LyricsScreen(
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .fillMaxHeight(),
+                                .fillMaxHeight()
+                                .lyricsStageEntrance(transitionProgress, LYRICS_STAGE_START, LYRICS_STAGE_END, LyricsStageTravel, LYRICS_STAGE_SCALE_FROM),
                     )
 
                     AnimatedVisibility(
@@ -570,6 +594,7 @@ fun LyricsScreen(
                                 ) +
                                 fadeOut(tween(CONTROLS_FADE_OUT_MS)),
                         label = "lyrics-landscape-controls",
+                        modifier = Modifier.lyricsStageEntrance(transitionProgress, CONTROLS_STAGE_START, CONTROLS_STAGE_END, ControlsStageTravel),
                     ) {
                         Column(
                             modifier =
@@ -627,7 +652,8 @@ fun LyricsScreen(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .lyricsStageEntrance(transitionProgress, LYRICS_STAGE_START, LYRICS_STAGE_END, LyricsStageTravel, LYRICS_STAGE_SCALE_FROM),
                 )
 
                 AnimatedVisibility(
@@ -653,6 +679,7 @@ fun LyricsScreen(
                             ) +
                             fadeOut(tween(CONTROLS_FADE_OUT_MS)),
                     label = "lyrics-portrait-controls",
+                    modifier = Modifier.lyricsStageEntrance(transitionProgress, CONTROLS_STAGE_START, CONTROLS_STAGE_END, ControlsStageTravel),
                 ) {
                     AppleMusicControls(
                         positionProvider = { positionState.longValue },
@@ -893,12 +920,16 @@ private fun AppleMusicTrackHeader(
     mediaMetadata: MediaMetadata,
     foregroundColor: Color,
     onMoreClick: () -> Unit,
+    transitionProgress: () -> Float,
     modifier: Modifier = Modifier,
 ) {
     val artistText =
         remember(mediaMetadata.id, mediaMetadata.artists) {
             mediaMetadata.artists.joinToString { it.name }
         }
+    val morph = LocalLyricsArtworkMorph.current
+    val headerTextEntrance =
+        Modifier.lyricsStageEntrance(transitionProgress, HEADER_STAGE_START, HEADER_STAGE_END, HeaderTextStageTravel)
 
     Row(
         modifier = modifier.heightIn(min = 64.dp),
@@ -908,7 +939,15 @@ private fun AppleMusicTrackHeader(
             modifier =
                 Modifier
                     .size(58.dp)
-                    .clip(RoundedCornerShape(7.dp))
+                    .graphicsLayer {
+                        alpha =
+                            if (morph?.sourceBounds != null) {
+                                1f
+                            } else {
+                                lyricsStagedProgress(transitionProgress(), HEADER_STAGE_START, HEADER_STAGE_END)
+                            }
+                    }.lyricsArtworkMorphTarget(morph, HeaderArtworkCornerRadius)
+                    .clip(RoundedCornerShape(HeaderArtworkCornerRadius))
                     .background(foregroundColor.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -931,7 +970,10 @@ private fun AppleMusicTrackHeader(
         Spacer(modifier = Modifier.width(14.dp))
 
         Column(
-            modifier = Modifier.weight(1f),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .then(headerTextEntrance),
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
@@ -957,9 +999,28 @@ private fun AppleMusicTrackHeader(
             contentDescription = stringResource(R.string.more_options),
             foregroundColor = foregroundColor,
             onClick = onMoreClick,
+            modifier = headerTextEntrance,
         )
     }
 }
+
+private fun Modifier.lyricsStageEntrance(
+    progress: () -> Float,
+    start: Float,
+    end: Float,
+    travel: Dp,
+    scaleFrom: Float = 1f,
+): Modifier =
+    graphicsLayer {
+        val stage = lyricsStagedProgress(progress(), start, end)
+        alpha = stage
+        translationY = (1f - stage) * travel.toPx()
+        if (scaleFrom != 1f) {
+            val scale = scaleFrom + (1f - scaleFrom) * stage
+            scaleX = scale
+            scaleY = scale
+        }
+    }
 
 @Composable
 private fun AppleMusicHeaderIconButton(
@@ -967,10 +1028,11 @@ private fun AppleMusicHeaderIconButton(
     contentDescription: String,
     foregroundColor: Color,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier =
-            Modifier
+            modifier
                 .size(48.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
