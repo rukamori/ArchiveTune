@@ -1209,7 +1209,7 @@ private fun crossfadeDurationText(halfSeconds: Int): String {
     return stringResource(R.string.audio_crossfade_seconds, displayValue)
 }
 
-private fun crossfadeHalfSeconds(seconds: Float): Int = (seconds * 2f).roundToInt().coerceIn(0, 20)
+private fun crossfadeHalfSeconds(seconds: Float): Int = (seconds * 2f).roundToInt().coerceIn(0, 40)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1224,7 +1224,7 @@ fun CrossfadeSliderPreference(
     }
 
     var sliderValue by remember {
-        mutableFloatStateOf(valueSeconds.coerceIn(0f, 10f))
+        mutableFloatStateOf(valueSeconds.coerceIn(0f, 20f))
     }
 
     if (showDialog) {
@@ -1250,7 +1250,7 @@ fun CrossfadeSliderPreference(
                 onValueChange.invoke(rounded)
             },
             onCancel = {
-                sliderValue = valueSeconds.coerceIn(0f, 10f)
+                sliderValue = valueSeconds.coerceIn(0f, 20f)
                 showDialog = false
             },
             onReset = {
@@ -1275,15 +1275,15 @@ fun CrossfadeSliderPreference(
                     val crossfadeSliderState =
                         rememberControlledSliderState(
                             value = sliderValue,
-                            steps = 19,
-                            valueRange = 0f..10f,
+                            steps = 39,
+                            valueRange = 0f..20f,
                         )
 
                     Slider(
                         state = crossfadeSliderState,
                         onValueChange = { value ->
                             crossfadeSliderState.value = value
-                            sliderValue = value.coerceIn(0f, 10f)
+                            sliderValue = value.coerceIn(0f, 20f)
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
