@@ -4429,13 +4429,19 @@ class MusicService :
             }
         }
         if (!force && queueRecommendations.value.failed) return
-        if (!force && chips.isNotEmpty()) {
-            queueRecommendations.value = QueueRecommendations(chips = chips)
+        if (!force && (chips.isNotEmpty() || recommendationSeed == metadata.id)) {
+            if (chips.isNotEmpty()) queueRecommendations.value = QueueRecommendations(chips = chips)
+            if (player.repeatMode == REPEAT_MODE_OFF && player.mediaItemCount - player.currentMediaItemIndex <= 3) {
+                onInfiniteQueueEnabled()
+            }
             return
         }
-        if (!force && (recommendationRequest?.isActive == true || recommendationSeed == metadata.id)) return
-        requestRecommendations(active?.endpoint ?: WatchEndpoint(videoId = metadata.id), replace = false)
+        val endpoint = active?.takeIf { it.canSupplyRecommendations() }?.endpoint ?: WatchEndpoint(videoId = metadata.id)
+        requestRecommendations(endpoint, replace = false)
     }
+
+    private fun YouTubeQueue.canSupplyRecommendations(): Boolean =
+        hasNextPage() || (this === recommendationQueue && recommendationBuffer.isNotEmpty())
 
     fun selectQueueChip(id: String) {
         if (isTogetherGuestSession() || !dataStore.get(AutoLoadMoreKey, true)) return
@@ -4486,7 +4492,7 @@ class MusicService :
                         currentQueue = EmptyQueue
                     }
                 } else {
-                    val active = recommendationQueue
+                    val active = recommendationQueue?.takeIf { it.canSupplyRecommendations() }
                     if (active == null) {
                         recommendationQueue = queue
                         recommendationBuffer = status.items
@@ -4593,8 +4599,7 @@ class MusicService :
         if (infiniteQueueJob?.isActive == true || recommendationRequest?.isActive == true ||
             queuePageJob?.isActive == true || initialQueueJob?.isActive == true || currentQueue.hasNextPage()
         ) return
-        val active = recommendationQueue
-        if (active != null && recommendationBuffer.isEmpty() && !active.hasNextPage()) return
+        val active = recommendationQueue?.takeIf { it.canSupplyRecommendations() }
         val generation = ++infiniteQueueGeneration
         val recommendationVersion = recommendationGeneration
         val seedId = metadata.id
@@ -4604,7 +4609,7 @@ class MusicService :
             try {
                 val queue = active
                     ?: YouTubeQueue(WatchEndpoint(videoId = seedId), followAutomixPreview = true)
-                val buffered = recommendationBuffer
+                val buffered = if (active != null) recommendationBuffer else emptyList()
                 val fetchPage = recommendationQueue === queue && buffered.isEmpty() && queue.hasNextPage()
                 val (page, items) = withContext(Dispatchers.IO) {
                     val page = if (fetchPage) queue.fetchNextPage() else null
@@ -4621,6 +4626,11 @@ class MusicService :
                 page?.let(queue::acceptNextPage)
                 val known = (0 until player.mediaItemCount).mapTo(mutableSetOf()) { player.getMediaItemAt(it).mediaId }
                 val additions = items.filter { known.add(it.mediaId) }.map { it.withQueueEntry(recommended = true) }
+                if (additions.isEmpty() && !queue.hasNextPage()) {
+                    if (queue === recommendationQueue) recommendationBuffer = emptyList()
+                    queueRecommendations.value = queueRecommendations.value.copy(failed = true)
+                    return@launch
+                }
                 val resumeAfterEnd = player.playbackState == Player.STATE_ENDED && player.playWhenReady
                 appendRecommendations(additions)
                 if (resumeAfterEnd && player.hasNextMediaItem()) player.seekToNextMediaItem()
