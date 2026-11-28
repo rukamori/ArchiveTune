@@ -482,7 +482,7 @@ fun Thumbnail(
                                                 .lyricsArtworkMorphSource(
                                                     morph = lyricsArtworkMorph,
                                                     cornerRadius = thumbnailCornerRadius.dp,
-                                                    imageModel = displayUrl,
+                                                    imageUrl = displayUrl,
                                                     enabled = shouldUseCanvas,
                                                 ),
                                     ) {
